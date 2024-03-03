@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>Java 虚拟机原理 (五) G1垃圾收集器深入 | </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="深入了解G1垃圾收集器背后的核心原理。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java 虚拟机原理 (五) G1垃圾收集器深入">
+<meta property="og:url" content="http://example.com/2021/01/11/Java-%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%8E%9F%E7%90%86-5-G1%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%E6%B7%B1%E5%85%A5/index.html">
+<meta property="og:site_name">
+<meta property="og:description" content="深入了解G1垃圾收集器背后的核心原理。">
+<meta property="og:locale">
+<meta property="og:image" content="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FG1%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%E6%B7%B1%E5%85%A5%2Fg1gc-tams.png">
+<meta property="og:image" content="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FG1%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%E6%B7%B1%E5%85%A5%2FRemembered%20Sets.jpg">
+<meta property="article:published_time" content="2021-01-10T17:00:07.000Z">
+<meta property="article:modified_time" content="2024-02-18T13:17:51.574Z">
+<meta property="article:tag" content="JVM">
+<meta property="article:tag" content="垃圾回收器">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FG1%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%E6%B7%B1%E5%85%A5%2Fg1gc-tams.png">
+  
+    <link rel="alternate" href="/atom.xml" title="null" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<meta name="generator" content="Hexo 7.1.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo"></a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Suche"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Suche"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-Java-虚拟机原理-5-G1垃圾收集器深入" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2021/01/11/Java-%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%8E%9F%E7%90%86-5-G1%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%E6%B7%B1%E5%85%A5/" class="article-date">
+  <time class="dt-published" datetime="2021-01-10T17:00:07.000Z" itemprop="datePublished">2021-01-11</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Java/">Java</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      Java 虚拟机原理 (五) G1垃圾收集器深入
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>深入了解G1垃圾收集器背后的核心原理。</p>
+<span id="more"></span>
+
+<h2 id="三色标记"><a href="#三色标记" class="headerlink" title="三色标记"></a>三色标记</h2><p>CMS收集器使用了Incremental Update算法，而G1收集器使用的是SATB算法。这两者背后的思想都使用了三色标记算法，标记算法如下：</p>
+<ul>
+<li>黑色(black):自己已经被标记，且字段全部标记完毕的对象；</li>
+<li>灰色(gray): 自己已经被标记，但尚有字段未被标记的对象（collector正在访问的对象）；</li>
+<li>白色(white):尚未标记对象。</li>
+</ul>
+<p><strong>注意：</strong> 标记结束后，被标记的对象是存活对象，没有被标记的对象会被回收。</p>
+<p>在并行GC阶段，应用线程和GC形成并行。如果一个白对象被灰对象引用着，那么这个白对象被漏标的充分必要条件是：</p>
+<ul>
+<li>1.mutator 新增了一个黑对象到该白对象的引用；</li>
+<li>2.mutator 删除了所有灰对象到该白对象的引用。</li>
+</ul>
+<blockquote>
+<p>解释：<br>黑对象持有了指向白对象的引用。根据定义，collector已经不会再去遍历黑对象的字段，所以发现不了这里还有一个活引用指向这个白对象。如果还有某个灰对象持有直接或间接引用能到达这个白对象，那就没关系；如果从灰对象出发的所有引用到这个白对象的路径都不幸被切断了，那这个白对象就要被漏扫描了。<br>所以如果同时发生以上两种情况，会导致对象漏标而被回收掉。</p>
+</blockquote>
+<p>为了解决漏标问题。</p>
+<ul>
+<li>CMS 采用写屏障和 Incremental Update 算法，致力于打破第一个条件。做法是只要在写屏障里发现要有一个白对象的引用被赋值到一个黑对象的字段里，那就把这个白对象变成灰色的（就是标记为存活对象，常见做法是标记并压到marking stack上，或者是记录在类似mod-union table里）。这样就强力杜绝了上述第一种情况的发生。</li>
+<li>G1 则采用写屏障和 SATB 算法，致力于打破第二个条件。SATB 的原理是是把标记开始时的逻辑快照里所有的活对象都看作时活的，而 NextTAMS 指针之后的的对象也在这一个周期里隐式存活，并且在写屏障中把变更前的对象引用都记录下来，都作为存活对象保留到下一个周期。（已经黑灰就不用管，还是白的就变成灰的）。</li>
+</ul>
+<p>无论 CMS 抑或是 G1 都会产生浮动垃圾。</p>
+<h2 id="SATB"><a href="#SATB" class="headerlink" title="SATB"></a>SATB</h2><p>SATB（snapshot at the beginning)是G1并发理论的基础，用于维护确保回收过程的正确性。从名字上理解，就是GC在开始的时候先对活着的对象保存一个快照；</p>
+<p>接下来，在GC过程中新分配的对象都是活的。</p>
+<p>很容易知道哪些对象是一次GC开始之后新分配的：每个region记录着两个top-at-mark-start（TAMS）指针，分别为prevTAMS和nextTAMS。并发标记开始时候Top指针和NextTAMS指针是重合的（如下图所示），并发阶段分配的对象对位于[Next TAMS，Top]区间。这个区间内的对象默认都是存活的，这也叫做隐式标记。</p>
+<p><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FG1%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%E6%B7%B1%E5%85%A5%2Fg1gc-tams.png" alt="g1gc-tams.png"></p>
+<p>但如果在Next TAMS之前有一个白色对象A被一个灰色对象B作为字段而引用，在并发标记扫描到这个字段之前，被赋值为null，那么B–&gt;A的引用关系被切断，可能会导致白色对象A被漏标。</p>
+<p>G1为了解决这个问题，在引用关系修改之前，插入一层pre-write barrier。pre-write barrier会把每次引用关系变化时旧的引用值记录下来。这些引用值会被放置到satb mark queue中，在下一次的并发标记阶段，会依次处理satb mark queue中的对象，确保这部分对象在本轮GC是存活的。</p>
+<pre><code class="c++">void G1SATBCardTableModRefBS::enqueue(oop pre_val) &#123;
+  // Nulls should have been already filtered.
+  assert(pre_val-&gt;is_oop(true), &quot;Error&quot;);
+
+  if (!JavaThread::satb_mark_queue_set().is_active()) return;
+  Thread* thr = Thread::current();
+  if (thr-&gt;is_Java_thread()) &#123;
+    JavaThread* jt = (JavaThread*)thr;
+    jt-&gt;satb_mark_queue().enqueue(pre_val);
+  &#125; else &#123;
+    MutexLockerEx x(Shared_SATB_Q_lock, Mutex::_no_safepoint_check_flag);
+    JavaThread::satb_mark_queue_set().shared_satb_queue()-&gt;enqueue(pre_val);
+  &#125;
+&#125;
+</code></pre>
+<p>但这很可能有对象在snapshot中是活的，但随着并发GC的进行它可能本来已经死了，但SATB还是会让它活过这次GC。这就导致所谓的浮动垃圾。</p>
+<h2 id="RSet"><a href="#RSet" class="headerlink" title="RSet"></a>RSet</h2><p> <strong>该章节摘录自<a target="_blank" rel="noopener" href="https://tech.meituan.com/2016/09/23/g1.html">Java Hotspot G1 GC的一些关键技术</a></strong></p>
+<p>全称是Remembered Set，是辅助GC过程的一种结构，典型的空间换时间工具，和Card Table有些类似。还有一种数据结构也是辅助GC的：Collection Set（CSet），它记录了GC要收集的Region集合，集合里的Region可以是任意年代的。在GC的时候，对于old-&gt;young和old-&gt;old的跨代对象引用，只要扫描对应的CSet中的RSet即可。 逻辑上说每个Region都有一个RSet，RSet记录了其他Region中的对象引用本Region中对象的关系，属于points-into结构（谁引用了我的对象）。而Card Table则是一种points-out（我引用了谁的对象）的结构，每个Card 覆盖一定范围的Heap（一般为512Bytes）。G1的RSet是在Card Table的基础上实现的：每个Region会记录下别的Region有指向自己的指针，并标记这些指针分别在哪些Card的范围内。 这个RSet其实是一个Hash Table，Key是别的Region的起始地址，Value是一个集合，里面的元素是Card Table的Index。</p>
+<p>下图表示了RSet、Card和Region的关系（<a target="_blank" rel="noopener" href="http://www.infoq.com/articles/tuning-tips-G1-GC">出处</a>）：</p>
+<p><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FG1%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%E6%B7%B1%E5%85%A5%2FRemembered%20Sets.jpg" alt="Remembered Sets.jpg"></p>
+<p>上图中有三个Region，每个Region被分成了多个Card，在不同Region中的Card会相互引用，Region1中的Card中的对象引用了Region2中的Card中的对象，蓝色实线表示的就是points-out的关系，而在Region2的RSet中，记录了Region1的Card，即红色虚线表示的关系，这就是points-into。 而维系RSet中的引用关系靠post-write barrier和Concurrent refinement threads来维护，操作伪代码如下（<a target="_blank" rel="noopener" href="http://hllvm.group.iteye.com/group/topic/44381">出处</a>）：</p>
+<pre><code class="c++">void oop_field_store(oop* field, oop new_value) &#123;
+  pre_write_barrier(field);             // pre-write barrier: for maintaining SATB invariant
+  *field = new_value;                   // the actual store
+  post_write_barrier(field, new_value); // post-write barrier: for tracking cross-region reference
+&#125;
+</code></pre>
+<p>post-write barrier记录了跨Region的引用更新，更新日志缓冲区则记录了那些包含更新引用的Cards。一旦缓冲区满了，Post-write barrier就停止服务了，会由Concurrent refinement threads处理这些缓冲区日志。 RSet究竟是怎么辅助GC的呢？在做YGC的时候，只需要选定young generation region的RSet作为根集，这些RSet记录了old-&gt;young的跨代引用，避免了扫描整个old generation。 而mixed gc的时候，old generation中记录了old-&gt;old的RSet，young-&gt;old的引用由扫描全部young generation region得到，这样也不用扫描全部old generation region。所以RSet的引入大大减少了GC的工作量。</p>
+<p><strong>学习资料</strong></p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/authorNari/g1gc-impl-book">彻底解剖G1GC</a></li>
+<li><a target="_blank" rel="noopener" href="https://tech.meituan.com/2016/09/23/g1.html">Java Hotspot G1 GC的一些关键技术</a></li>
+<li><a target="_blank" rel="noopener" href="https://hllvm-group.iteye.com/group/topic/44381">RednaxelaFX的论坛回复帖</a></li>
+<li><a target="_blank" rel="noopener" href="http://fleurer.github.io/2018/07/11/note-on-g1gc-barriers/">F叔的学习笔记</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.oracle.com/technical-resources/articles/java/g1gc.html">Garbage First Garbage Collector Tuning</a></li>
+<li><a target="_blank" rel="noopener" href="http://book.douban.com/subject/6809987/">The Garbage Collection Handbook</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/9e70097807ba">G1垃圾收集器之SATB</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2021/01/11/Java-%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%8E%9F%E7%90%86-5-G1%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%E6%B7%B1%E5%85%A5/" data-id="cltba3oml000b18r1d2c1ah18" data-title="Java 虚拟机原理 (五) G1垃圾收集器深入" class="article-share-link"><span class="fa fa-share">Teilen</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JVM/" rel="tag">JVM</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8/" rel="tag">垃圾回收器</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2021/01/29/%E6%B7%B1%E5%85%A5-MySQL-1-%E4%BD%93%E7%B3%BB%E7%BB%93%E6%9E%84/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Neuer</strong>
+      <div class="article-nav-title">
+        
+          深入 MySQL (一) 体系结构
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2021/01/10/Java-%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%8E%9F%E7%90%86-4-G1%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%E5%85%A5%E9%97%A8/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Älter</strong>
+      <div class="article-nav-title">Java 虚拟机原理 (四) G1垃圾收集器入门</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Kategorien</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JAVA/">JAVA</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Java/">Java</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Spring/">Spring</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%80%BB%E7%BB%93/">总结</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/">读书笔记</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/CAS%E5%8E%9F%E7%90%86/" rel="tag">CAS原理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/IO/" rel="tag">IO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/" rel="tag">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/" rel="tag">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/" rel="tag">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NIO/" rel="tag">NIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/" rel="tag">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%A0%81%E6%95%B4%E6%B4%81%E4%B9%8B%E9%81%93/" rel="tag">代码整洁之道</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8/" rel="tag">垃圾回收器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/" rel="tag">垃圾收集器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/" rel="tag">性能分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6/" rel="tag">文件描述符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag">源码分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98/" rel="tag">生产问题</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%9C%BA%E5%88%B6/" rel="tag">类加载机制</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" rel="tag">线程池</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" rel="tag">读书笔记</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%BE%93%E5%85%A5%E8%BE%93%E5%87%BA%E6%B5%81/" rel="tag">输入输出流</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/CAS%E5%8E%9F%E7%90%86/" style="font-size: 10px;">CAS原理</a> <a href="/tags/IO/" style="font-size: 10px;">IO</a> <a href="/tags/JVM/" style="font-size: 18.33px;">JVM</a> <a href="/tags/Java/" style="font-size: 16.67px;">Java</a> <a href="/tags/MySQL/" style="font-size: 15px;">MySQL</a> <a href="/tags/NIO/" style="font-size: 11.67px;">NIO</a> <a href="/tags/Netty/" style="font-size: 13.33px;">Netty</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/Spring/" style="font-size: 16.67px;">Spring</a> <a href="/tags/%E4%BB%A3%E7%A0%81%E6%95%B4%E6%B4%81%E4%B9%8B%E9%81%93/" style="font-size: 10px;">代码整洁之道</a> <a href="/tags/%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8/" style="font-size: 13.33px;">垃圾回收器</a> <a href="/tags/%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/" style="font-size: 10px;">垃圾收集器</a> <a href="/tags/%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/" style="font-size: 10px;">性能分析</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="font-size: 15px;">数据库</a> <a href="/tags/%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6/" style="font-size: 10px;">文件描述符</a> <a href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" style="font-size: 20px;">源码分析</a> <a href="/tags/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98/" style="font-size: 13.33px;">生产问题</a> <a href="/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%9C%BA%E5%88%B6/" style="font-size: 10px;">类加载机制</a> <a href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" style="font-size: 10px;">线程池</a> <a href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" style="font-size: 10px;">读书笔记</a> <a href="/tags/%E8%BE%93%E5%85%A5%E8%BE%93%E5%87%BA%E6%B5%81/" style="font-size: 10px;">输入输出流</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archiv</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/04/">April 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">January 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">December 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">November 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">July 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">May 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">January 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/08/">August 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/06/">June 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">letzter Beitrag</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/04/08/Java-%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%8E%9F%E7%90%86-6-ZGC-%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/">Java 虚拟机原理 (六) ZGC 垃圾收集器</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/09/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98-3-%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E6%B5%B7%E6%81%A9%E6%B3%95%E5%88%99/">生产问题(3) 应用开发过程中的海恩法则</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/07/%E6%B7%B1%E5%85%A5-MySQL-6-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/">深入 MySQL (六) 常见问题汇总</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/06/%E6%B7%B1%E5%85%A5-MySQL-5-%E9%94%81/">深入 MySQL (五) 锁</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/05/%E6%B7%B1%E5%85%A5-MySQL-4-%E7%B4%A2%E5%BC%95/">深入 MySQL (四) 索引</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2024 <br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

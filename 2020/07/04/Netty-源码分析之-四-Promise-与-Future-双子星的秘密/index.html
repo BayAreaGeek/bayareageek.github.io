@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>Netty 源码分析之 四 Promise 与 Future: 双子星的秘密 | </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="永顺大牛写的系列教程《源码之下无秘密 ── 做最好的 Netty 源码分析教程》是目前我读过最好的netty源码分析文章。但不知道什么原因，作者在写到第三章的时候停更了。因此，我想尝试凭着个人的理解，续写后边几个章节。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Netty 源码分析之 四 Promise 与 Future: 双子星的秘密">
+<meta property="og:url" content="http://example.com/2020/07/04/Netty-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B-%E5%9B%9B-Promise-%E4%B8%8E-Future-%E5%8F%8C%E5%AD%90%E6%98%9F%E7%9A%84%E7%A7%98%E5%AF%86/index.html">
+<meta property="og:site_name">
+<meta property="og:description" content="永顺大牛写的系列教程《源码之下无秘密 ── 做最好的 Netty 源码分析教程》是目前我读过最好的netty源码分析文章。但不知道什么原因，作者在写到第三章的时候停更了。因此，我想尝试凭着个人的理解，续写后边几个章节。">
+<meta property="og:locale">
+<meta property="og:image" content="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FNetty%20%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%20%E5%9B%9B%20Promise%20%E4%B8%8E%20Future%3A%20%E5%8F%8C%E5%AD%90%E6%98%9F%E7%9A%84%E7%A7%98%E5%AF%86%2FFuture%E5%92%8CPromise%E7%B1%BB%E5%9B%BE.png">
+<meta property="article:published_time" content="2020-07-04T08:10:56.000Z">
+<meta property="article:modified_time" content="2024-03-03T08:51:49.507Z">
+<meta property="article:tag" content="Netty">
+<meta property="article:tag" content="源码分析">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FNetty%20%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%20%E5%9B%9B%20Promise%20%E4%B8%8E%20Future%3A%20%E5%8F%8C%E5%AD%90%E6%98%9F%E7%9A%84%E7%A7%98%E5%AF%86%2FFuture%E5%92%8CPromise%E7%B1%BB%E5%9B%BE.png">
+  
+    <link rel="alternate" href="/atom.xml" title="null" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<meta name="generator" content="Hexo 7.1.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo"></a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Suche"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Suche"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-Netty-源码分析之-四-Promise-与-Future-双子星的秘密" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2020/07/04/Netty-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B-%E5%9B%9B-Promise-%E4%B8%8E-Future-%E5%8F%8C%E5%AD%90%E6%98%9F%E7%9A%84%E7%A7%98%E5%AF%86/" class="article-date">
+  <time class="dt-published" datetime="2020-07-04T08:10:56.000Z" itemprop="datePublished">2020-07-04</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Java/">Java</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      Netty 源码分析之 四 Promise 与 Future: 双子星的秘密
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>永顺大牛写的系列教程<a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007282628#comment-area">《源码之下无秘密 ── 做最好的 Netty 源码分析教程》</a>是目前我读过最好的netty源码分析文章。但不知道什么原因，作者在写到第三章的时候停更了。因此，我想尝试凭着个人的理解，续写后边几个章节。</p>
+<span id="more"></span>
+<h2 id="写在最前"><a href="#写在最前" class="headerlink" title="写在最前"></a>写在最前</h2><p>永顺前辈已经写完章节有如下：</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000006824091">Netty 源码分析之 番外篇 Java NIO 的前生今世</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007282597">Netty 源码分析之 零 磨刀不误砍柴工 源码分析环境搭建</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007282789">Netty 源码分析之 一 揭开 Bootstrap 神秘的红盖头 (客户端)</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007283053">Netty 源码分析之 一 揭开 Bootstrap 神秘的红盖头 (服务器端)</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007308934">Netty 源码分析之 二 贯穿 Netty 的大动脉 ── ChannelPipeline (一)</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007309311">Netty 源码分析之 二 贯穿 Netty 的大动脉 ── ChannelPipeline (二)</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007403873">Netty 源码分析之 三 我就是大名鼎鼎的 EventLoop(一)</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007403937">Netty 源码分析之 三 我就是大名鼎鼎的 EventLoop(二)</a></li>
+</ul>
+<p>续写章节：</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://blog.duval.top/2020/07/04/Netty-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B-%E5%9B%9B-Promise-%E4%B8%8E-Future-%E5%8F%8C%E5%AD%90%E6%98%9F%E7%9A%84%E7%A7%98%E5%AF%86/">Netty 源码分析之 四 Promise 与 Future: 双子星的秘密</a></li>
+<li><a target="_blank" rel="noopener" href="https://blog.duval.top/2020/07/09/Netty-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B-%E4%BA%94-%E5%A5%94%E8%85%BE%E7%9A%84%E8%A1%80%E6%B6%B2-ByteBuf/">Netty 源码分析之 五 奔腾的血液: ByteBuf</a></li>
+<li><a target="_blank" rel="noopener" href="https://blog.duval.top/2020/07/15/Netty-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B-%E5%85%AD-%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%A4%84%E7%90%86%E5%99%A8-Handler/">Netty 源码分析之 六 流水线处理器: Handler</a></li>
+</ul>
+<p><em>本文使用的netty版本为4.1.33</em></p>
+<h2 id="Future和Promise的关系"><a href="#Future和Promise的关系" class="headerlink" title="Future和Promise的关系"></a>Future<V>和Promise<V>的关系</h2><p>Netty内部的io.netty.util.concurrent.Future<V> 继承自java.util.concurrent.Future<V>，而Promise<V>是前者的一个特殊实现。<br><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FNetty%20%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%20%E5%9B%9B%20Promise%20%E4%B8%8E%20Future%3A%20%E5%8F%8C%E5%AD%90%E6%98%9F%E7%9A%84%E7%A7%98%E5%AF%86%2FFuture%E5%92%8CPromise%E7%B1%BB%E5%9B%BE.png" alt="Future和Promise类图.png"></p>
+<h2 id="Java原生Future"><a href="#Java原生Future" class="headerlink" title="Java原生Future"></a>Java原生Future<V></h2><p>Java并发编程包下提供了Future<V>接口。Future在异步编程中表示该异步操作的结果，通过Future<V>的内部方法可以实现状态检查、取消执行、获取执行结果等操作。内部的方法如下：</p>
+<pre><code class="java">    // 尝试取消执行
+    boolean cancel(boolean mayInterruptIfRunning);
+    // 是否已经被取消执行
+    boolean isCancelled();
+    // 是否已经执行完毕
+    boolean isDone();
+    // 阻塞获取执行结果
+    V get() throws InterruptedException, ExecutionException;
+    // 阻塞获取执行结果或超时后返回
+    V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException;
+</code></pre>
+<h2 id="Netty对Future的扩展"><a href="#Netty对Future的扩展" class="headerlink" title="Netty对Future的扩展"></a>Netty对Future<V>的扩展</h2><p>原生的Future<V>功能比较有限，Netty扩展了Future<V>并增加了以下方法：</p>
+<ul>
+<li>增加了更加丰富的状态判断方法</li>
+</ul>
+<pre><code class="java">    // 判断是否执行成功
+    boolean isSuccess();
+    // 判断是否可以取消执行
+    boolean isCancellable();
+</code></pre>
+<ul>
+<li>支持获取导致I&#x2F;O操作异常</li>
+</ul>
+<pre><code class="java">    Throwable cause();
+</code></pre>
+<ul>
+<li>增加了监听回调有关方法，支持future完成后执行用户指定的回调方法</li>
+</ul>
+<pre><code class="java">    // 增加回调方法
+    Future&lt;V&gt; addListener(GenericFutureListener&lt;? extends Future&lt;? super V&gt;&gt; listener);
+    // 增加多个回调方法
+    Future&lt;V&gt; addListeners(GenericFutureListener&lt;? extends Future&lt;? super V&gt;&gt;... listeners);
+    // 删除回调方法
+    Future&lt;V&gt; removeListener(GenericFutureListener&lt;? extends Future&lt;? super V&gt;&gt; listener);
+    // 删除多个回调方法
+    Future&lt;V&gt; removeListeners(GenericFutureListener&lt;? extends Future&lt;? super V&gt;&gt;... listeners);
+</code></pre>
+<ul>
+<li>增加了更丰富的阻塞等待结果返回的两类方法。其中一类是sync方法，阻塞等待结果且如果执行失败后向外抛出导致失败的异常；另外一类是await方法，仅阻塞等待结果返回，不向外抛出异常。</li>
+</ul>
+<pre><code class="java">    // 阻塞等待，且如果失败抛出异常
+    Future&lt;V&gt; sync() throws InterruptedException;
+    // 同上，区别是不可中断阻塞等待过程
+    Future&lt;V&gt; syncUninterruptibly();
+
+    // 阻塞等待
+    Future&lt;V&gt; await() throws InterruptedException;
+    // 同上，区别是不可中断阻塞等待过程
+    Future&lt;V&gt; awaitUninterruptibly();
+</code></pre>
+<h2 id="Promise"><a href="#Promise" class="headerlink" title="Promise"></a>Promise<V></h2><p>Promise<V>接口继续继承了Future<V>，并增加若干个设置状态并回调的方法：</p>
+<pre><code class="java">    // 设置成功状态并回调
+    Promise&lt;V&gt; setSuccess(V result);
+    boolean trySuccess(V result);
+    // 设置失败状态并回调
+    Promise&lt;V&gt; setFailure(Throwable cause);
+    boolean tryFailure(Throwable cause);
+    // 设置为不可取消状态
+    boolean setUncancellable();
+</code></pre>
+<p>可见，Promise<V>作为一个特殊的Future<V>，只是增加了一些状态设置方法。所以它常用于传入I&#x2F;O业务代码中，用于I&#x2F;O结束后设置成功（或失败）状态，并回调方法。</p>
+<h2 id="通过Promise设置I-O执行结果"><a href="#通过Promise设置I-O执行结果" class="headerlink" title="通过Promise设置I&#x2F;O执行结果"></a>通过Promise设置I&#x2F;O执行结果</h2><p>以客户端连接的注册过程为例，调用链路如下：</p>
+<pre><code class="java">io.netty.bootstrap.Bootstrap.connect()
+--&gt; io.netty.bootstrap.Bootstrap.doResolveAndConnect()
+----&gt;io.netty.bootstrap.AbstractBootstrap.initAndRegister()
+------&gt;io.netty.channel.MultithreadEventLoopGroup.register()
+--------&gt;io.netty.channel.SingleThreadEventLoop.register()
+</code></pre>
+<p>一直跟踪到SingleThreadEventLoop中，会看到这段代码：</p>
+<pre><code class="java">    @Override
+    public ChannelFuture register(Channel channel) &#123;
+        return register(new DefaultChannelPromise(channel, this));
+    &#125;
+</code></pre>
+<p>此处新建了一个DefaultChannelPromise，构造函数传入了当前的channel以及当前所在的线程this。从第一节的类图我们知道，DefaultChannelPromise同时实现了Future和Promise，具有上述提到的所有方法。</p>
+<p>然后继续将该promise传递进另外一个register方法中：</p>
+<pre><code class="java">    @Override
+    public ChannelFuture register(final ChannelPromise promise) &#123;
+        ObjectUtil.checkNotNull(promise, &quot;promise&quot;);
+        promise.channel().unsafe().register(this, promise);
+        return promise;
+    &#125;
+</code></pre>
+<p>在该register方法中，继续将promise传递到Unsafe的register方法中，而立即返回了以ChannelFuture的形式返回了该promise。显然这里是一个异步回调处理：上层的业务可以拿到返回的ChannelFuture阻塞等待结果或者设置回调方法，而继续往下传的Promise可以用于设置执行状态并且回调设置的方法。</p>
+<p>我们继续往下debug可以看到：</p>
+<pre><code class="java"> // io.netty.channel.AbstractChannel.AbstractUnsafe.java
+ @Override
+        public final void register(EventLoop eventLoop, final ChannelPromise promise) &#123;
+            if (eventLoop == null) &#123;
+                throw new NullPointerException(&quot;eventLoop&quot;);
+            &#125;
+            if (isRegistered()) &#123;
+                // 如果已经注册过，则置为失败
+                promise.setFailure(new IllegalStateException(&quot;registered to an event loop already&quot;));
+                return;
+            &#125;
+            if (!isCompatible(eventLoop)) &#123;
+                // 如果线程类型不兼容，则置为失败
+                promise.setFailure(
+                        new IllegalStateException(&quot;incompatible event loop type: &quot; + eventLoop.getClass().getName()));
+                return;
+            &#125;
+
+            AbstractChannel.this.eventLoop = eventLoop;
+
+            if (eventLoop.inEventLoop()) &#123;
+                register0(promise);
+            &#125; else &#123;
+                try &#123;
+                    eventLoop.execute(new Runnable() &#123;
+                        @Override
+                        public void run() &#123;
+                            register0(promise);
+                        &#125;
+                    &#125;);
+                &#125; catch (Throwable t) &#123;
+                    logger.warn(
+                            &quot;Force-closing a channel whose registration task was not accepted by an event loop: &#123;&#125;&quot;,
+                            AbstractChannel.this, t);
+                    closeForcibly();
+                    closeFuture.setClosed();
+                    // 出现异常情况置promise为失败
+                    safeSetFailure(promise, t);
+                &#125;
+            &#125;
+        &#125;
+
+        private void register0(ChannelPromise promise) &#123;
+            try &#123;
+                // 注册之前，先将promise置为不可取消转态
+                if (!promise.setUncancellable() || !ensureOpen(promise)) &#123;
+                    return;
+                &#125;
+                boolean firstRegistration = neverRegistered;
+                doRegister();
+                neverRegistered = false;
+                registered = true;
+
+                pipeline.invokeHandlerAddedIfNeeded();
+                // promise置为成功
+                safeSetSuccess(promise);
+                pipeline.fireChannelRegistered();
+             
+                if (isActive()) &#123;
+                    if (firstRegistration) &#123;
+                        pipeline.fireChannelActive();
+                    &#125; else if (config().isAutoRead()) &#123;
+                        beginRead();
+                    &#125;
+                &#125;
+            &#125; catch (Throwable t) &#123;
+                // Close the channel directly to avoid FD leak.
+                closeForcibly();
+                closeFuture.setClosed();
+                // 出现异常情况置promise为失败
+                safeSetFailure(promise, t);
+            &#125;
+        &#125;
+</code></pre>
+<p>可见，底层的I&#x2F;O操作成功与否都可以通过Promise设置状态，并使得外层的ChannelFuture可以感知得到I&#x2F;O操作的结果。</p>
+<h2 id="通过ChannelFuture获取I-O执行结果"><a href="#通过ChannelFuture获取I-O执行结果" class="headerlink" title="通过ChannelFuture获取I&#x2F;O执行结果"></a>通过ChannelFuture获取I&#x2F;O执行结果</h2><p>我们再来看看被返回的ChannelFuture的用途：</p>
+<pre><code class="java">// io.netty.bootstrap.AbstractBootstrap.java
+
+    final ChannelFuture initAndRegister() &#123;
+        //...
+        ChannelFuture regFuture = config().group().register(channel);
+        // 如果异常不为null，则意味着底层的I/O已经失败，并且promise设置了失败异常
+        if (regFuture.cause() != null) &#123;
+            if (channel.isRegistered()) &#123;
+                channel.close();
+            &#125; else &#123;
+                channel.unsafe().closeForcibly();
+            &#125;
+        &#125;
+        return regFuture;
+    &#125;
+</code></pre>
+<p>这里通过检查失败异常栈是否为空，可以提前检查到I&#x2F;O是否失败。继续回溯，还可以看到：</p>
+<pre><code class="java">// io.netty.bootstrap.AbstractBootstrap.java
+
+ private ChannelFuture doBind(final SocketAddress localAddress) &#123;
+    final ChannelFuture regFuture = initAndRegister();
+    final Channel channel = regFuture.channel();
+    if (regFuture.cause() != null) &#123;
+        return regFuture;
+    &#125;
+
+    if (regFuture.isDone()) &#123;
+        // 如果注册已经成功
+        ChannelPromise promise = channel.newPromise();
+        doBind0(regFuture, channel, localAddress, promise);
+        return promise;
+    &#125; else &#123;
+       // 如果注册尚未完成
+       // ...
+    &#125;
+&#125;
+</code></pre>
+<p>此处，通过ChannelFuture#isDone()方法可以知道底层的注册是否完成，如果完成，则继续进行bind操作。</p>
+<p>但是因为注册是个异步操作，如果此时注册可能还没完成，那就会进入如下逻辑：</p>
+<pre><code class="java">// io.netty.bootstrap.AbstractBootstrap.java
+
+//...
+else &#123;
+    // Registration future is almost always fulfilled already, but just in case it&#39;s not.
+    final PendingRegistrationPromise promise = new PendingRegistrationPromise(channel);
+    regFuture.addListener(new ChannelFutureListener() &#123;
+        @Override
+        public void operationComplete(ChannelFuture future) throws Exception &#123;
+            Throwable cause = future.cause();
+            if (cause != null) &#123;
+                // Registration on the EventLoop failed so fail the ChannelPromise directly to not cause an
+                // IllegalStateException once we try to access the EventLoop of the Channel.
+                promise.setFailure(cause);
+            &#125; else &#123;
+                // Registration was successful, so set the correct executor to use.
+                // See https://github.com/netty/netty/issues/2586
+                promise.registered();
+
+                doBind0(regFuture, channel, localAddress, promise);
+            &#125;
+        &#125;
+    &#125;);
+    return promise;
+&#125;
+</code></pre>
+<p>这里新建了一个新的PendingRegistrationPromise，并为原来的ChannelFuture对象添加了一个回调方法，并在回调中更改PendingRegistrationPromise的状态，而且PendingRegistrationPromise会继续被传递到上层。当底层的Promise状态被设置并且回调，就会进入该回调方法。从而将I&#x2F;O状态继续向外传递。</p>
+<h2 id="DefaultChannelPromise的结果传递实现原理"><a href="#DefaultChannelPromise的结果传递实现原理" class="headerlink" title="DefaultChannelPromise的结果传递实现原理"></a>DefaultChannelPromise的结果传递实现原理</h2><p>我们已经了解清楚了Promise和Future的异步模型。再来看看底层是如何实现的。以最常用的DefaultChannelPromise为例，内部非常简单，我们主要看它的父类DefaultPromise：</p>
+<pre><code class="java">    // result字段的原子更新器
+    @SuppressWarnings(&quot;rawtypes&quot;)
+    private static final AtomicReferenceFieldUpdater&lt;DefaultPromise, Object&gt; RESULT_UPDATER =
+            AtomicReferenceFieldUpdater.newUpdater(DefaultPromise.class, Object.class, &quot;result&quot;);
+    // 缓存执行结果的字段
+    private volatile Object result;
+    // promise所在的线程
+    private final EventExecutor executor;
+    // 一个或者多个回调方法
+    private Object listeners;
+    // 阻塞线程数量计数器  
+    private short waiters;
+</code></pre>
+<h3 id="设置状态"><a href="#设置状态" class="headerlink" title="设置状态"></a>设置状态</h3><p>以设置成功状态为例（setSuccess）：</p>
+<pre><code class="java">
+    @Override
+    public Promise&lt;V&gt; setSuccess(V result) &#123;
+        if (setSuccess0(result)) &#123;
+            // 调用回调方法
+            notifyListeners();
+            return this;
+        &#125;
+        throw new IllegalStateException(&quot;complete already: &quot; + this);
+    &#125;
+
+    private boolean setSuccess0(V result) &#123;
+        return setValue0(result == null ? SUCCESS : result);
+    &#125;
+
+    private boolean setValue0(Object objResult) &#123;
+        // 原子修改result字段为objResult
+        if (RESULT_UPDATER.compareAndSet(this, null, objResult) ||
+            RESULT_UPDATER.compareAndSet(this, UNCANCELLABLE, objResult)) &#123;
+            checkNotifyWaiters();
+            return true;
+        &#125;
+        return false;
+    &#125;
+
+    private synchronized void checkNotifyWaiters() &#123;
+        if (waiters &gt; 0) &#123;
+            // 如果有其他线程在等待该promise的结果，则唤醒他们
+            notifyAll();
+        &#125;
+    &#125;
+</code></pre>
+<p>设置promise的状态其实就是原子地修改result字段为传入的执行结果。值得注意的是，result字段带有volatile关键字来确保多线程之间的可见性。另外，设置完毕状态后，会尝试唤醒所有在阻塞等待该promise返回结果的线程。</p>
+<p>其他设置状态方法不再赘言，基本上大同小异。</p>
+<h3 id="阻塞线程以等待执行结果"><a href="#阻塞线程以等待执行结果" class="headerlink" title="阻塞线程以等待执行结果"></a>阻塞线程以等待执行结果</h3><p>上文提到其他线程会阻塞等待该promise返回结果，具体实现以sync方法为例：</p>
+<pre><code class="java">    @Override
+    public Promise&lt;V&gt; sync() throws InterruptedException &#123;
+        // 阻塞等待
+        await();
+        // 如果有异常则抛出
+        rethrowIfFailed();
+        return this;
+    &#125;
+
+    @Override
+    public Promise&lt;V&gt; await() throws InterruptedException &#123;
+        if (isDone()) &#123;
+            // 如果已经完成，直接返回
+            return this;
+        &#125;
+        // 可以被中断
+        if (Thread.interrupted()) &#123;
+            throw new InterruptedException(toString());
+        &#125;
+        //检查死循环
+        checkDeadLock();
+
+        synchronized (this) &#123;
+            while (!isDone()) &#123;
+                // 递增计数器（用于记录有多少个线程在等待该promise返回结果）
+                incWaiters();
+                try &#123;
+                    // 阻塞等待结果
+                    wait();
+                &#125; finally &#123;
+                    // 递减计数器
+                    decWaiters();
+                &#125;
+            &#125;
+        &#125;
+        return this;
+    &#125;
+</code></pre>
+<p>所有调用sync方法的线程，都会被阻塞，直到promise被设置为成功或者失败。这也解释了为何Netty客户端或者服务端启动的时候一般都会调用sync方法，本质上都是阻塞当前线程而异步地等待I&#x2F;O结果返回，如下：</p>
+<pre><code class="java">    Bootstrap bootstrap = new Bootstrap();
+    ChannelFuture future = bootstrap.group(new NioEventLoopGroup(10))
+            .channel(NioSocketChannel.class)
+            .handler(new ChannelInitializer&lt;SocketChannel&gt;() &#123;
+                @Override
+                protected void initChannel(SocketChannel ch) throws Exception &#123;
+                    // 管道中添加基于换行符分割字符串的解析器
+                    ch.pipeline().addLast(new LineBasedFrameDecoder(1024));
+                    // 管道中添加字符串编码解码器
+                    ch.pipeline().addLast(new StringDecoder(Charset.forName(&quot;UTF-8&quot;)));
+                    ch.pipeline().addLast(new StringEncoder(Charset.forName(&quot;UTF-8&quot;)));
+                    // 管道中添加服务端处理逻辑
+                    ch.pipeline().addLast(new MyClientEchoHandler());
+                &#125;
+            &#125;).connect(&quot;127.0.0.1&quot;, 9898).sync();
+
+    future.channel().closeFuture().sync();
+</code></pre>
+<h3 id="回调机制"><a href="#回调机制" class="headerlink" title="回调机制"></a>回调机制</h3><pre><code class="java">    @Override
+    public Promise&lt;V&gt; addListener(GenericFutureListener&lt;? extends Future&lt;? super V&gt;&gt; listener) &#123;
+        checkNotNull(listener, &quot;listener&quot;);
+
+        synchronized (this) &#123;
+            // 添加回调方法
+            addListener0(listener);
+        &#125;
+
+        if (isDone()) &#123;
+            // 如果I/O操作已经结束，直接触发回调
+            notifyListeners();
+        &#125;
+
+        return this;
+    &#125;
+
+    private void addListener0(GenericFutureListener&lt;? extends Future&lt;? super V&gt;&gt; listener) &#123;
+        if (listeners == null) &#123;
+            // 只有一个回调方法直接赋值
+            listeners = listener;
+        &#125; else if (listeners instanceof DefaultFutureListeners) &#123;
+            // 将回调方法添加到DefaultFutureListeners内部维护的listeners数组中
+            ((DefaultFutureListeners) listeners).add(listener);
+        &#125; else &#123;
+            // 如果有多个回调方法，新建一个DefaultFutureListeners以保存更多的回调方法
+            listeners = new DefaultFutureListeners((GenericFutureListener&lt;?&gt;) listeners, listener);
+        &#125;
+    &#125;
+</code></pre>
+<p>从上边可以看到，添加回调方法完成之后，会立即检查promise是否已经完成；如果promise已经完成，则马上调用回调方法。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>Netty的Promise和Future机制是基于Java并发包下的Future<V>开发的。其中Future支持阻塞等待、添加回调方法、判断执行状态等，而Promise主要是支持状态设置相关方法。当底层I&#x2F;O操作通过Promise改变执行状态，我们可以通过同步等待的Future立即得到结果。</p>
+<p>因此，就像永顺大牛标题所言，在Netty的异步模型里，Promise和Future就像是双子星一般紧密相连。但我觉得这两者更像是量子纠缠里的两个电子，因为改变其中一个方的状态，另外一方能够马上感知。</p>
+<p>至此，Promise和Future的核心原理已经分析完毕。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2020/07/04/Netty-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B-%E5%9B%9B-Promise-%E4%B8%8E-Future-%E5%8F%8C%E5%AD%90%E6%98%9F%E7%9A%84%E7%A7%98%E5%AF%86/" data-id="cltba3omz002u18r1ap4mfj72" data-title="Netty 源码分析之 四 Promise 与 Future: 双子星的秘密" class="article-share-link"><span class="fa fa-share">Teilen</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Netty/" rel="tag">Netty</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag">源码分析</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/07/09/Netty-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B-%E4%BA%94-%E5%A5%94%E8%85%BE%E7%9A%84%E8%A1%80%E6%B6%B2-ByteBuf/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Neuer</strong>
+      <div class="article-nav-title">
+        
+          Netty 源码分析之 五 奔腾的血液: ByteBuf
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/06/12/Java%E9%AB%98%E6%80%A7%E8%83%BD%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B-Reactor%E6%A8%A1%E5%9E%8B/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Älter</strong>
+      <div class="article-nav-title">Java高性能网络编程--Reactor模型</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Kategorien</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JAVA/">JAVA</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Java/">Java</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Spring/">Spring</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%80%BB%E7%BB%93/">总结</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/">读书笔记</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/CAS%E5%8E%9F%E7%90%86/" rel="tag">CAS原理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/IO/" rel="tag">IO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/" rel="tag">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/" rel="tag">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/" rel="tag">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NIO/" rel="tag">NIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/" rel="tag">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%A0%81%E6%95%B4%E6%B4%81%E4%B9%8B%E9%81%93/" rel="tag">代码整洁之道</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8/" rel="tag">垃圾回收器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/" rel="tag">垃圾收集器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/" rel="tag">性能分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6/" rel="tag">文件描述符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag">源码分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98/" rel="tag">生产问题</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%9C%BA%E5%88%B6/" rel="tag">类加载机制</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" rel="tag">线程池</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" rel="tag">读书笔记</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%BE%93%E5%85%A5%E8%BE%93%E5%87%BA%E6%B5%81/" rel="tag">输入输出流</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/CAS%E5%8E%9F%E7%90%86/" style="font-size: 10px;">CAS原理</a> <a href="/tags/IO/" style="font-size: 10px;">IO</a> <a href="/tags/JVM/" style="font-size: 18.33px;">JVM</a> <a href="/tags/Java/" style="font-size: 16.67px;">Java</a> <a href="/tags/MySQL/" style="font-size: 15px;">MySQL</a> <a href="/tags/NIO/" style="font-size: 11.67px;">NIO</a> <a href="/tags/Netty/" style="font-size: 13.33px;">Netty</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/Spring/" style="font-size: 16.67px;">Spring</a> <a href="/tags/%E4%BB%A3%E7%A0%81%E6%95%B4%E6%B4%81%E4%B9%8B%E9%81%93/" style="font-size: 10px;">代码整洁之道</a> <a href="/tags/%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8/" style="font-size: 13.33px;">垃圾回收器</a> <a href="/tags/%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/" style="font-size: 10px;">垃圾收集器</a> <a href="/tags/%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/" style="font-size: 10px;">性能分析</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="font-size: 15px;">数据库</a> <a href="/tags/%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6/" style="font-size: 10px;">文件描述符</a> <a href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" style="font-size: 20px;">源码分析</a> <a href="/tags/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98/" style="font-size: 13.33px;">生产问题</a> <a href="/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%9C%BA%E5%88%B6/" style="font-size: 10px;">类加载机制</a> <a href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" style="font-size: 10px;">线程池</a> <a href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" style="font-size: 10px;">读书笔记</a> <a href="/tags/%E8%BE%93%E5%85%A5%E8%BE%93%E5%87%BA%E6%B5%81/" style="font-size: 10px;">输入输出流</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archiv</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/04/">April 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">January 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">December 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">November 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">July 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">May 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">January 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/08/">August 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/06/">June 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">letzter Beitrag</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/04/08/Java-%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%8E%9F%E7%90%86-6-ZGC-%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/">Java 虚拟机原理 (六) ZGC 垃圾收集器</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/09/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98-3-%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E6%B5%B7%E6%81%A9%E6%B3%95%E5%88%99/">生产问题(3) 应用开发过程中的海恩法则</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/07/%E6%B7%B1%E5%85%A5-MySQL-6-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/">深入 MySQL (六) 常见问题汇总</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/06/%E6%B7%B1%E5%85%A5-MySQL-5-%E9%94%81/">深入 MySQL (五) 锁</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/05/%E6%B7%B1%E5%85%A5-MySQL-4-%E7%B4%A2%E5%BC%95/">深入 MySQL (四) 索引</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2024 <br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

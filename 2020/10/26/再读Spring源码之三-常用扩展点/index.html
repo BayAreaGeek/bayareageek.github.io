@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>再读Spring源码之三 常用扩展点 | </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="本来打算逐个详解Spring的扩展点，但网上关于扩展点的有关资料其实已经非常多，没必要重复造轮子。于是，我决定用这篇文章扼要总结备忘下Spring的各个扩展点的原理和使用场景。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="再读Spring源码之三 常用扩展点">
+<meta property="og:url" content="http://example.com/2020/10/26/%E5%86%8D%E8%AF%BBSpring%E6%BA%90%E7%A0%81%E4%B9%8B%E4%B8%89-%E5%B8%B8%E7%94%A8%E6%89%A9%E5%B1%95%E7%82%B9/index.html">
+<meta property="og:site_name">
+<meta property="og:description" content="本来打算逐个详解Spring的扩展点，但网上关于扩展点的有关资料其实已经非常多，没必要重复造轮子。于是，我决定用这篇文章扼要总结备忘下Spring的各个扩展点的原理和使用场景。">
+<meta property="og:locale">
+<meta property="article:published_time" content="2020-10-26T10:31:25.000Z">
+<meta property="article:modified_time" content="2024-02-18T13:17:51.584Z">
+<meta property="article:tag" content="源码分析">
+<meta property="article:tag" content="Spring">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="null" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<meta name="generator" content="Hexo 7.1.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo"></a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Suche"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Suche"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-再读Spring源码之三-常用扩展点" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2020/10/26/%E5%86%8D%E8%AF%BBSpring%E6%BA%90%E7%A0%81%E4%B9%8B%E4%B8%89-%E5%B8%B8%E7%94%A8%E6%89%A9%E5%B1%95%E7%82%B9/" class="article-date">
+  <time class="dt-published" datetime="2020-10-26T10:31:25.000Z" itemprop="datePublished">2020-10-26</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Spring/">Spring</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      再读Spring源码之三 常用扩展点
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>本来打算逐个详解Spring的扩展点，但网上关于扩展点的有关资料其实已经非常多，没必要重复造轮子。于是，我决定用这篇文章扼要总结备忘下Spring的各个扩展点的原理和使用场景。</p>
+<span id="more"></span>
+
+<h2 id="BeanFactory内部扩展点"><a href="#BeanFactory内部扩展点" class="headerlink" title="BeanFactory内部扩展点"></a>BeanFactory内部扩展点</h2><p>BeanFactory初始化扩展点顺序：</p>
+<ul>
+<li><strong>BeanNameAware</strong>‘s setBeanName</li>
+<li><strong>BeanClassLoaderAware</strong>‘s setBeanClassLoader</li>
+<li><strong>BeanFactoryAware</strong>‘s setBeanFactory</li>
+<li><strong>EnvironmentAware</strong>‘s setEnvironment</li>
+<li><strong>EmbeddedValueResolverAware</strong>‘s setEmbeddedValueResolver</li>
+<li><strong>ResourceLoaderAware</strong>‘s setResourceLoader (only applicable when running in an application context)</li>
+<li><strong>ApplicationEventPublisherAware</strong>‘s setApplicationEventPublisher (only applicable when running in an application context)</li>
+<li><strong>MessageSourceAware</strong>‘s setMessageSource (only applicable when running in an application context)</li>
+<li><strong>ApplicationContextAware</strong>‘s setApplicationContext (only applicable when running in an application context)</li>
+<li><strong>ServletContextAware</strong>‘s setServletContext (only applicable when running in a web application context)</li>
+<li><strong>BeanPostProcessors</strong>‘s postProcessBeforeInitialization methods </li>
+<li><strong>InitializingBean</strong>‘s afterPropertiesSet</li>
+<li>a custom init-method definition</li>
+<li><strong>BeanPostProcessors</strong>‘s postProcessAfterInitialization methods</li>
+</ul>
+<p>BeanFactory关闭扩展点顺序：</p>
+<ul>
+<li><strong>DestructionAwareBeanPostProcessors</strong> postProcessBeforeDestruction methods</li>
+<li><strong>DisposableBean</strong>‘s destroy</li>
+<li>a custom destroy-method definition</li>
+</ul>
+<h2 id="BeanFactoryPostProcessor"><a href="#BeanFactoryPostProcessor" class="headerlink" title="BeanFactoryPostProcessor"></a>BeanFactoryPostProcessor</h2><h3 id="接口定义"><a href="#接口定义" class="headerlink" title="接口定义"></a>接口定义</h3><pre><code class="java">/**
+ * Factory hook that allows for custom modification of an application context&#39;s
+ * bean definitions, adapting the bean property values of the context&#39;s underlying
+ * bean factory.
+ *
+ * &lt;p&gt;Useful for custom config files targeted at system administrators that
+ * override bean properties configured in the application context. See
+ * &#123;@link PropertyResourceConfigurer&#125; and its concrete implementations for
+ * out-of-the-box solutions that address such configuration needs.
+ *
+ * &lt;p&gt;A &#123;@code BeanFactoryPostProcessor&#125; may interact with and modify bean
+ * definitions, but never bean instances. Doing so may cause premature bean
+ * instantiation, violating the container and causing unintended side-effects.
+ * If bean instance interaction is required, consider implementing
+ * &#123;@link BeanPostProcessor&#125; instead.
+ *
+ * &lt;h3&gt;Registration&lt;/h3&gt;
+ * &lt;p&gt;An &#123;@code ApplicationContext&#125; auto-detects &#123;@code BeanFactoryPostProcessor&#125;
+ * beans in its bean definitions and applies them before any other beans get created.
+ * A &#123;@code BeanFactoryPostProcessor&#125; may also be registered programmatically
+ * with a &#123;@code ConfigurableApplicationContext&#125;.
+ *
+ * &lt;h3&gt;Ordering&lt;/h3&gt;
+ * &lt;p&gt;&#123;@code BeanFactoryPostProcessor&#125; beans that are autodetected in an
+ * &#123;@code ApplicationContext&#125; will be ordered according to
+ * &#123;@link org.springframework.core.PriorityOrdered&#125; and
+ * &#123;@link org.springframework.core.Ordered&#125; semantics. In contrast,
+ * &#123;@code BeanFactoryPostProcessor&#125; beans that are registered programmatically
+ * with a &#123;@code ConfigurableApplicationContext&#125; will be applied in the order of
+ * registration; any ordering semantics expressed through implementing the
+ * &#123;@code PriorityOrdered&#125; or &#123;@code Ordered&#125; interface will be ignored for
+ * programmatically registered post-processors. Furthermore, the
+ * &#123;@link org.springframework.core.annotation.Order @Order&#125; annotation is not
+ * taken into account for &#123;@code BeanFactoryPostProcessor&#125; beans.
+ *
+ * @author Juergen Hoeller
+ * @author Sam Brannen
+ * @since 06.07.2003
+ * @see BeanPostProcessor
+ * @see PropertyResourceConfigurer
+ */
+@FunctionalInterface
+public interface BeanFactoryPostProcessor &#123;
+
+    /**
+     * Modify the application context&#39;s internal bean factory after its standard
+     * initialization. All bean definitions will have been loaded, but no beans
+     * will have been instantiated yet. This allows for overriding or adding
+     * properties even to eager-initializing beans.
+     * @param beanFactory the bean factory used by the application context
+     * @throws org.springframework.beans.BeansException in case of errors
+     */
+    void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException;
+
+&#125;
+</code></pre>
+<h3 id="应用场景"><a href="#应用场景" class="headerlink" title="应用场景"></a>应用场景</h3><p>BeanFactoryPostProcessor用于在Bean定义信息加载完成之后、Bean实例化之前进行，对Bean的定义信息进行修改。</p>
+<p>常见例子：PropertySourcesPlaceholderConfigurer，用于配置文件的占位符替换。</p>
+<h3 id="实现原理"><a href="#实现原理" class="headerlink" title="实现原理"></a>实现原理</h3><p>Spring容器启动过程中会自动加载实现了BeanFactoryPostProcessor接口的Bean。</p>
+<p>并且在refresh()中进行调用：</p>
+<pre><code class="java">// 见org.springframework.context.support.AbstractApplicationContext
+@Override
+public void refresh() throws BeansException, IllegalStateException &#123;
+    synchronized (this.startupShutdownMonitor) &#123;
+        // Prepare this context for refreshing.
+        prepareRefresh();
+
+        // Tell the subclass to refresh the internal bean factory.
+        ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
+
+        // Prepare the bean factory for use in this context.
+        prepareBeanFactory(beanFactory);
+
+        try &#123;
+            // Allows post-processing of the bean factory in context subclasses.
+            postProcessBeanFactory(beanFactory);
+
+            // Invoke factory processors registered as beans in the context.
+            invokeBeanFactoryPostProcessors(beanFactory);
+        // ...
+</code></pre>
+<p>具体调用逻辑见org.springframework.context.support.PostProcessorRegistrationDelegate#invokeBeanFactoryPostProcessors方法，此处不再赘言。</p>
+<h3 id="注意事项"><a href="#注意事项" class="headerlink" title="注意事项"></a>注意事项</h3><p>BeanFactoryPostProcessor是在bean实例化前被触发的，因此绝对不能在BeanFactoryPostProcessor提前实例化bean，否则会破坏容器造成预估不到的副作用。如果需要修改Bean的实例化逻辑，应该使用BeanPostProcessor。</p>
+<h3 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h3><ul>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/youzhibing/p/10559337.html">Spring拓展接口之BeanFactoryPostProcessor，占位符与敏感信息解密原理</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/3d099ea43b0e">使用BeanFactoryPostProcessor——这种姿势不要用</a></li>
+</ul>
+<h2 id="BeanDefinitionRegistryPostProcessor"><a href="#BeanDefinitionRegistryPostProcessor" class="headerlink" title="BeanDefinitionRegistryPostProcessor"></a>BeanDefinitionRegistryPostProcessor</h2><h3 id="接口定义-1"><a href="#接口定义-1" class="headerlink" title="接口定义"></a>接口定义</h3><pre><code class="java">/**
+ * Extension to the standard &#123;@link BeanFactoryPostProcessor&#125; SPI, allowing for
+ * the registration of further bean definitions &lt;i&gt;before&lt;/i&gt; regular
+ * BeanFactoryPostProcessor detection kicks in. In particular,
+ * BeanDefinitionRegistryPostProcessor may register further bean definitions
+ * which in turn define BeanFactoryPostProcessor instances.
+ *
+ * @author Juergen Hoeller
+ * @since 3.0.1
+ * @see org.springframework.context.annotation.ConfigurationClassPostProcessor
+ */
+public interface BeanDefinitionRegistryPostProcessor extends BeanFactoryPostProcessor &#123;
+
+    /**
+     * Modify the application context&#39;s internal bean definition registry after its
+     * standard initialization. All regular bean definitions will have been loaded,
+     * but no beans will have been instantiated yet. This allows for adding further
+     * bean definitions before the next post-processing phase kicks in.
+     * @param registry the bean definition registry used by the application context
+     * @throws org.springframework.beans.BeansException in case of errors
+     */
+    void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException;
+
+&#125;
+</code></pre>
+<h3 id="应用场景-1"><a href="#应用场景-1" class="headerlink" title="应用场景"></a>应用场景</h3><p>BeanFactoryPostProcessor的子类，用于注册自定义的BeanDefinition。该拓展点在BeanFactoryPostProcessor之前执行。</p>
+<h3 id="实现原理-1"><a href="#实现原理-1" class="headerlink" title="实现原理"></a>实现原理</h3><p>实现过程和 <em>BeanFactoryPostProcessor</em> 高度相关。<br>请见 <em>org.springframework.context.support.PostProcessorRegistrationDelegate#invokeBeanFactoryPostProcessors</em> 方法</p>
+<h2 id="BeanPostProcessor"><a href="#BeanPostProcessor" class="headerlink" title="BeanPostProcessor"></a>BeanPostProcessor</h2><h3 id="接口定义-2"><a href="#接口定义-2" class="headerlink" title="接口定义"></a>接口定义</h3><pre><code class="java">/**
+ * Factory hook that allows for custom modification of new bean instances &amp;mdash;
+ * for example, checking for marker interfaces or wrapping beans with proxies.
+ *
+ * &lt;p&gt;Typically, post-processors that populate beans via marker interfaces
+ * or the like will implement &#123;@link #postProcessBeforeInitialization&#125;,
+ * while post-processors that wrap beans with proxies will normally
+ * implement &#123;@link #postProcessAfterInitialization&#125;.
+ *
+ * &lt;h3&gt;Registration&lt;/h3&gt;
+ * &lt;p&gt;An &#123;@code ApplicationContext&#125; can autodetect &#123;@code BeanPostProcessor&#125; beans
+ * in its bean definitions and apply those post-processors to any beans subsequently
+ * created. A plain &#123;@code BeanFactory&#125; allows for programmatic registration of
+ * post-processors, applying them to all beans created through the bean factory.
+ *
+ * &lt;h3&gt;Ordering&lt;/h3&gt;
+ * &lt;p&gt;&#123;@code BeanPostProcessor&#125; beans that are autodetected in an
+ * &#123;@code ApplicationContext&#125; will be ordered according to
+ * &#123;@link org.springframework.core.PriorityOrdered&#125; and
+ * &#123;@link org.springframework.core.Ordered&#125; semantics. In contrast,
+ * &#123;@code BeanPostProcessor&#125; beans that are registered programmatically with a
+ * &#123;@code BeanFactory&#125; will be applied in the order of registration; any ordering
+ * semantics expressed through implementing the
+ * &#123;@code PriorityOrdered&#125; or &#123;@code Ordered&#125; interface will be ignored for
+ * programmatically registered post-processors. Furthermore, the
+ * &#123;@link org.springframework.core.annotation.Order @Order&#125; annotation is not
+ * taken into account for &#123;@code BeanPostProcessor&#125; beans.
+ *
+ * @author Juergen Hoeller
+ * @author Sam Brannen
+ * @since 10.10.2003
+ * @see InstantiationAwareBeanPostProcessor
+ * @see DestructionAwareBeanPostProcessor
+ * @see ConfigurableBeanFactory#addBeanPostProcessor
+ * @see BeanFactoryPostProcessor
+ */
+public interface BeanPostProcessor &#123;
+
+    /**
+     * Apply this &#123;@code BeanPostProcessor&#125; to the given new bean instance &lt;i&gt;before&lt;/i&gt; any bean
+     * initialization callbacks (like InitializingBean&#39;s &#123;@code afterPropertiesSet&#125;
+     * or a custom init-method). The bean will already be populated with property values.
+     * The returned bean instance may be a wrapper around the original.
+     * &lt;p&gt;The default implementation returns the given &#123;@code bean&#125; as-is.
+     * @param bean the new bean instance
+     * @param beanName the name of the bean
+     * @return the bean instance to use, either the original or a wrapped one;
+     * if &#123;@code null&#125;, no subsequent BeanPostProcessors will be invoked
+     * @throws org.springframework.beans.BeansException in case of errors
+     * @see org.springframework.beans.factory.InitializingBean#afterPropertiesSet
+     */
+    @Nullable
+    default Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException &#123;
+        return bean;
+    &#125;
+
+    /**
+     * Apply this &#123;@code BeanPostProcessor&#125; to the given new bean instance &lt;i&gt;after&lt;/i&gt; any bean
+     * initialization callbacks (like InitializingBean&#39;s &#123;@code afterPropertiesSet&#125;
+     * or a custom init-method). The bean will already be populated with property values.
+     * The returned bean instance may be a wrapper around the original.
+     * &lt;p&gt;In case of a FactoryBean, this callback will be invoked for both the FactoryBean
+     * instance and the objects created by the FactoryBean (as of Spring 2.0). The
+     * post-processor can decide whether to apply to either the FactoryBean or created
+     * objects or both through corresponding &#123;@code bean instanceof FactoryBean&#125; checks.
+     * &lt;p&gt;This callback will also be invoked after a short-circuiting triggered by a
+     * &#123;@link InstantiationAwareBeanPostProcessor#postProcessBeforeInstantiation&#125; method,
+     * in contrast to all other &#123;@code BeanPostProcessor&#125; callbacks.
+     * &lt;p&gt;The default implementation returns the given &#123;@code bean&#125; as-is.
+     * @param bean the new bean instance
+     * @param beanName the name of the bean
+     * @return the bean instance to use, either the original or a wrapped one;
+     * if &#123;@code null&#125;, no subsequent BeanPostProcessors will be invoked
+     * @throws org.springframework.beans.BeansException in case of errors
+     * @see org.springframework.beans.factory.InitializingBean#afterPropertiesSet
+     * @see org.springframework.beans.factory.FactoryBean
+     */
+    @Nullable
+    default Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException &#123;
+        return bean;
+    &#125;
+
+&#125;
+</code></pre>
+<h3 id="应用场景-2"><a href="#应用场景-2" class="headerlink" title="应用场景"></a>应用场景</h3><p> <em>BeanPostProcessor</em> 允许自定义修改spring bean factory创建的新bean实例。如果你想在Spring容器完成实例化、配置和初始化bean之后实现一些定制逻辑，我们可以插入一个或多个 <em>BeanPostProcessor</em> 实现。</p>
+<p> <em>BeanPostProcessor</em> 通常检查回调接口，或者使用代理包装bean。例如一些Spring AOP基础结构类（例如 <em>AbstractAdvisingBeanPostProcessor</em> ）实现了bean后处理器，提供代理包装逻辑。</p>
+<p>常见例子： <em>AutowiredAnnotationBeanPostProcessor</em>，@Autowire注解的实现</p>
+<h3 id="实现原理-2"><a href="#实现原理-2" class="headerlink" title="实现原理"></a>实现原理</h3><p>Bean在实例化前后分别会调用该拓展点的两个方法。</p>
+<p>例如，在类 <em>org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory</em> 中有如下逻辑：</p>
+<pre><code class="java">protected Object initializeBean(String beanName, Object bean, @Nullable RootBeanDefinition mbd) &#123;
+    if (System.getSecurityManager() != null) &#123;
+        AccessController.doPrivileged((PrivilegedAction&lt;Object&gt;) () -&gt; &#123;
+            invokeAwareMethods(beanName, bean);
+            return null;
+        &#125;, getAccessControlContext());
+    &#125;
+    else &#123;
+        invokeAwareMethods(beanName, bean);
+    &#125;
+
+    Object wrappedBean = bean;
+    if (mbd == null || !mbd.isSynthetic()) &#123;
+        // 实例化前调用 postProcessBeforeInitialization
+        wrappedBean = applyBeanPostProcessorsBeforeInitialization(wrappedBean, beanName);
+    &#125;
+
+    try &#123;
+        invokeInitMethods(beanName, wrappedBean, mbd);
+    &#125;
+    catch (Throwable ex) &#123;
+        throw new BeanCreationException(
+                (mbd != null ? mbd.getResourceDescription() : null),
+                beanName, &quot;Invocation of init method failed&quot;, ex);
+    &#125;
+    if (mbd == null || !mbd.isSynthetic()) &#123;
+        // 实例化后调用 applyBeanPostProcessorsAfterInitialization
+        wrappedBean = applyBeanPostProcessorsAfterInitialization(wrappedBean, beanName);
+    &#125;
+
+    return wrappedBean;
+&#125;
+
+@Override
+public Object applyBeanPostProcessorsBeforeInitialization(Object existingBean, String beanName)
+        throws BeansException &#123;
+
+    Object result = existingBean;
+    for (BeanPostProcessor processor : getBeanPostProcessors()) &#123;
+        Object current = processor.postProcessBeforeInitialization(result, beanName);
+        if (current == null) &#123;
+            return result;
+        &#125;
+        result = current;
+    &#125;
+    return result;
+&#125;
+
+@Override
+public Object applyBeanPostProcessorsAfterInitialization(Object existingBean, String beanName)
+        throws BeansException &#123;
+
+    Object result = existingBean;
+    for (BeanPostProcessor processor : getBeanPostProcessors()) &#123;
+        Object current = processor.postProcessAfterInitialization(result, beanName);
+        if (current == null) &#123;
+            return result;
+        &#125;
+        result = current;
+    &#125;
+    return result;
+&#125;
+</code></pre>
+<h3 id="注意事项-1"><a href="#注意事项-1" class="headerlink" title="注意事项"></a>注意事项</h3><p>无</p>
+<h3 id="参考资料-1"><a href="#参考资料-1" class="headerlink" title="参考资料"></a>参考资料</h3><ul>
+<li><a target="_blank" rel="noopener" href="https://juejin.im/post/6844903976886861831">Spring系列六：Spring BeanPostProcessor</a></li>
+</ul>
+<h2 id="Aware"><a href="#Aware" class="headerlink" title="Aware"></a>Aware</h2><h3 id="接口定义-3"><a href="#接口定义-3" class="headerlink" title="接口定义"></a>接口定义</h3><p>只是一个标记接口，没有其他内部方法。具体实现都在子类中。</p>
+<pre><code class="java">/**
+ * A marker superinterface indicating that a bean is eligible to be notified by the
+ * Spring container of a particular framework object through a callback-style method.
+ * The actual method signature is determined by individual subinterfaces but should
+ * typically consist of just one void-returning method that accepts a single argument.
+ *
+ * &lt;p&gt;Note that merely implementing &#123;@link Aware&#125; provides no default functionality.
+ * Rather, processing must be done explicitly, for example in a
+ * &#123;@link org.springframework.beans.factory.config.BeanPostProcessor&#125;.
+ * Refer to &#123;@link org.springframework.context.support.ApplicationContextAwareProcessor&#125;
+ * for an example of processing specific &#123;@code *Aware&#125; interface callbacks.
+ *
+ * @author Chris Beams
+ * @author Juergen Hoeller
+ * @since 3.1
+ */
+public interface Aware &#123;
+&#125;
+</code></pre>
+<h3 id="应用场景-3"><a href="#应用场景-3" class="headerlink" title="应用场景"></a>应用场景</h3><p>Aware 接口是一个标记接口，所有实现该接口的类都会被Spring容器筛选出来，并得到某种通知。所有实现该接口的子接口都提供固定的接收通知的方法。常见的实现包括：</p>
+<ul>
+<li>ApplicationContextAware</li>
+<li>EnvironmentAware</li>
+<li>EmbeddedValueResolverAware</li>
+<li>ResourceLoaderAware</li>
+<li>ApplicationEventPublisherAware</li>
+<li>MessageSourceAware</li>
+</ul>
+<h3 id="实现原理-3"><a href="#实现原理-3" class="headerlink" title="实现原理"></a>实现原理</h3><p>Aware相关接口实现Bean是借助一个 <em>ApplicationContextAwareProcessor</em> 来触发的。<em>ApplicationContextAwareProcessor</em> 实现了 <em>BeanPostProcessor</em> 扩展点:</p>
+<pre><code class="java">class ApplicationContextAwareProcessor implements BeanPostProcessor &#123;
+
+    private final ConfigurableApplicationContext applicationContext;
+
+    private final StringValueResolver embeddedValueResolver;
+
+
+    /**
+     * Create a new ApplicationContextAwareProcessor for the given context.
+     */
+    public ApplicationContextAwareProcessor(ConfigurableApplicationContext applicationContext) &#123;
+        this.applicationContext = applicationContext;
+        this.embeddedValueResolver = new EmbeddedValueResolver(applicationContext.getBeanFactory());
+    &#125;
+
+
+    @Override
+    @Nullable
+    public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException &#123;
+        // 只处理Aware子类，此处提前判断并短路不符合条件的bean。
+        // 个人觉得这个布尔条件略丑，为啥不用 bean instanceOf Aware ?
+        if (!(bean instanceof EnvironmentAware || bean instanceof EmbeddedValueResolverAware ||
+                bean instanceof ResourceLoaderAware || bean instanceof ApplicationEventPublisherAware ||
+                bean instanceof MessageSourceAware || bean instanceof ApplicationContextAware))&#123;
+            return bean;
+        &#125;
+
+        AccessControlContext acc = null;
+
+        if (System.getSecurityManager() != null) &#123;
+            acc = this.applicationContext.getBeanFactory().getAccessControlContext();
+        &#125;
+
+        if (acc != null) &#123;
+            AccessController.doPrivileged((PrivilegedAction&lt;Object&gt;) () -&gt; &#123;
+                invokeAwareInterfaces(bean);
+                return null;
+            &#125;, acc);
+        &#125;
+        else &#123;
+            invokeAwareInterfaces(bean);
+        &#125;
+
+        return bean;
+    &#125;
+
+    private void invokeAwareInterfaces(Object bean) &#123;
+        // 判断bean类型，并且调用其实现的子接口方法
+        if (bean instanceof EnvironmentAware) &#123;
+            ((EnvironmentAware) bean).setEnvironment(this.applicationContext.getEnvironment());
+        &#125;
+        if (bean instanceof EmbeddedValueResolverAware) &#123;
+            ((EmbeddedValueResolverAware) bean).setEmbeddedValueResolver(this.embeddedValueResolver);
+        &#125;
+        if (bean instanceof ResourceLoaderAware) &#123;
+            ((ResourceLoaderAware) bean).setResourceLoader(this.applicationContext);
+        &#125;
+        if (bean instanceof ApplicationEventPublisherAware) &#123;
+            ((ApplicationEventPublisherAware) bean).setApplicationEventPublisher(this.applicationContext);
+        &#125;
+        if (bean instanceof MessageSourceAware) &#123;
+            ((MessageSourceAware) bean).setMessageSource(this.applicationContext);
+        &#125;
+        if (bean instanceof ApplicationContextAware) &#123;
+            ((ApplicationContextAware) bean).setApplicationContext(this.applicationContext);
+        &#125;
+    &#125;
+
+&#125;
+</code></pre>
+<h2 id="ApplicationListener"><a href="#ApplicationListener" class="headerlink" title="ApplicationListener"></a>ApplicationListener</h2><h3 id="接口定义-4"><a href="#接口定义-4" class="headerlink" title="接口定义"></a>接口定义</h3><pre><code class="java">/**
+ * Interface to be implemented by application event listeners.
+ *
+ * &lt;p&gt;Based on the standard &#123;@code java.util.EventListener&#125; interface
+ * for the Observer design pattern.
+ *
+ * &lt;p&gt;As of Spring 3.0, an &#123;@code ApplicationListener&#125; can generically declare
+ * the event type that it is interested in. When registered with a Spring
+ * &#123;@code ApplicationContext&#125;, events will be filtered accordingly, with the
+ * listener getting invoked for matching event objects only.
+ *
+ * @author Rod Johnson
+ * @author Juergen Hoeller
+ * @param &lt;E&gt; the specific &#123;@code ApplicationEvent&#125; subclass to listen to
+ * @see org.springframework.context.ApplicationEvent
+ * @see org.springframework.context.event.ApplicationEventMulticaster
+ * @see org.springframework.context.event.EventListener
+ */
+@FunctionalInterface
+public interface ApplicationListener&lt;E extends ApplicationEvent&gt; extends EventListener &#123;
+
+    /**
+     * Handle an application event.
+     * @param event the event to respond to
+     */
+    void onApplicationEvent(E event);
+
+&#125;
+</code></pre>
+<h3 id="应用场景-4"><a href="#应用场景-4" class="headerlink" title="应用场景"></a>应用场景</h3><p><em>ApplicationListener</em> 主要用来监听应用程序上下文的事件，不同的实现子类注册自己感兴趣的事件。</p>
+<h3 id="实现原理-4"><a href="#实现原理-4" class="headerlink" title="实现原理"></a>实现原理</h3><p>使用样例：</p>
+<pre><code class="java">@Slf4j
+@Component
+public class MyApplicationStartedListener implements ApplicationListener&lt;ApplicationStartedEvent&gt; &#123;
+    @Override
+    public void onApplicationEvent(ApplicationStartedEvent event) &#123;
+        log.info(&quot;application started. event=&#123;&#125;&quot;, event);
+    &#125;
+&#125;
+</code></pre>
+<h2 id="InitializingBean"><a href="#InitializingBean" class="headerlink" title="InitializingBean"></a>InitializingBean</h2><h3 id="接口定义-5"><a href="#接口定义-5" class="headerlink" title="接口定义"></a>接口定义</h3><pre><code class="java">/**
+ * Interface to be implemented by beans that need to react once all their properties
+ * have been set by a &#123;@link BeanFactory&#125;: e.g. to perform custom initialization,
+ * or merely to check that all mandatory properties have been set.
+ *
+ * &lt;p&gt;An alternative to implementing &#123;@code InitializingBean&#125; is specifying a custom
+ * init method, for example in an XML bean definition. For a list of all bean
+ * lifecycle methods, see the &#123;@link BeanFactory BeanFactory javadocs&#125;.
+ *
+ * @author Rod Johnson
+ * @author Juergen Hoeller
+ * @see DisposableBean
+ * @see org.springframework.beans.factory.config.BeanDefinition#getPropertyValues()
+ * @see org.springframework.beans.factory.support.AbstractBeanDefinition#getInitMethodName()
+ */
+public interface InitializingBean &#123;
+
+    /**
+     * Invoked by the containing &#123;@code BeanFactory&#125; after it has set all bean properties
+     * and satisfied &#123;@link BeanFactoryAware&#125;, &#123;@code ApplicationContextAware&#125; etc.
+     * &lt;p&gt;This method allows the bean instance to perform validation of its overall
+     * configuration and final initialization when all bean properties have been set.
+     * @throws Exception in the event of misconfiguration (such as failure to set an
+     * essential property) or if initialization fails for any other reason
+     */
+    void afterPropertiesSet() throws Exception;
+
+&#125;
+</code></pre>
+<h3 id="应用场景-5"><a href="#应用场景-5" class="headerlink" title="应用场景"></a>应用场景</h3><p><em>InitializingBean</em> 用在Bean的属性注入完毕后，执行用户自定义的初始化逻辑。</p>
+<h3 id="实现原理-5"><a href="#实现原理-5" class="headerlink" title="实现原理"></a>实现原理</h3><p>调用逻辑可见 <em>org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory</em></p>
+<pre><code class="java">/**
+    * Initialize the given bean instance, applying factory callbacks
+    * as well as init methods and bean post processors.
+    * &lt;p&gt;Called from &#123;@link #createBean&#125; for traditionally defined beans,
+    * and from &#123;@link #initializeBean&#125; for existing bean instances.
+    * @param beanName the bean name in the factory (for debugging purposes)
+    * @param bean the new bean instance we may need to initialize
+    * @param mbd the bean definition that the bean was created with
+    * (can also be &#123;@code null&#125;, if given an existing bean instance)
+    * @return the initialized bean instance (potentially wrapped)
+    * @see BeanNameAware
+    * @see BeanClassLoaderAware
+    * @see BeanFactoryAware
+    * @see #applyBeanPostProcessorsBeforeInitialization
+    * @see #invokeInitMethods
+    * @see #applyBeanPostProcessorsAfterInitialization
+    */
+protected Object initializeBean(String beanName, Object bean, @Nullable RootBeanDefinition mbd) &#123;
+    if (System.getSecurityManager() != null) &#123;
+        AccessController.doPrivileged((PrivilegedAction&lt;Object&gt;) () -&gt; &#123;
+            invokeAwareMethods(beanName, bean);
+            return null;
+        &#125;, getAccessControlContext());
+    &#125;
+    else &#123;
+        invokeAwareMethods(beanName, bean);
+    &#125;
+
+    Object wrappedBean = bean;
+    if (mbd == null || !mbd.isSynthetic()) &#123;
+        wrappedBean = applyBeanPostProcessorsBeforeInitialization(wrappedBean, beanName);
+    &#125;
+
+    try &#123;
+        // 调用用户自定义初始化方法
+        invokeInitMethods(beanName, wrappedBean, mbd);
+    &#125;
+    catch (Throwable ex) &#123;
+        throw new BeanCreationException(
+                (mbd != null ? mbd.getResourceDescription() : null),
+                beanName, &quot;Invocation of init method failed&quot;, ex);
+    &#125;
+    if (mbd == null || !mbd.isSynthetic()) &#123;
+        wrappedBean = applyBeanPostProcessorsAfterInitialization(wrappedBean, beanName);
+    &#125;
+
+    return wrappedBean;
+&#125;
+
+/**
+    * Give a bean a chance to react now all its properties are set,
+    * and a chance to know about its owning bean factory (this object).
+    * This means checking whether the bean implements InitializingBean or defines
+    * a custom init method, and invoking the necessary callback(s) if it does.
+    * @param beanName the bean name in the factory (for debugging purposes)
+    * @param bean the new bean instance we may need to initialize
+    * @param mbd the merged bean definition that the bean was created with
+    * (can also be &#123;@code null&#125;, if given an existing bean instance)
+    * @throws Throwable if thrown by init methods or by the invocation process
+    * @see #invokeCustomInitMethod
+    */
+protected void invokeInitMethods(String beanName, Object bean, @Nullable RootBeanDefinition mbd)
+        throws Throwable &#123;
+    // 执行InitializingBean扩展点，调用用户自定义逻辑
+    boolean isInitializingBean = (bean instanceof InitializingBean);
+    if (isInitializingBean &amp;&amp; (mbd == null || !mbd.isExternallyManagedInitMethod(&quot;afterPropertiesSet&quot;))) &#123;
+        if (logger.isTraceEnabled()) &#123;
+            logger.trace(&quot;Invoking afterPropertiesSet() on bean with name &#39;&quot; + beanName + &quot;&#39;&quot;);
+        &#125;
+        if (System.getSecurityManager() != null) &#123;
+            try &#123;
+                AccessController.doPrivileged((PrivilegedExceptionAction&lt;Object&gt;) () -&gt; &#123;
+                    ((InitializingBean) bean).afterPropertiesSet();
+                    return null;
+                &#125;, getAccessControlContext());
+            &#125;
+            catch (PrivilegedActionException pae) &#123;
+                throw pae.getException();
+            &#125;
+        &#125;
+        else &#123;
+            ((InitializingBean) bean).afterPropertiesSet();
+        &#125;
+    &#125;
+    // 执行用户自定义的初始化方法 init-method
+    if (mbd != null &amp;&amp; bean.getClass() != NullBean.class) &#123;
+        String initMethodName = mbd.getInitMethodName();
+        if (StringUtils.hasLength(initMethodName) &amp;&amp;
+                !(isInitializingBean &amp;&amp; &quot;afterPropertiesSet&quot;.equals(initMethodName)) &amp;&amp;
+                !mbd.isExternallyManagedInitMethod(initMethodName)) &#123;
+            invokeCustomInitMethod(beanName, bean, mbd);
+        &#125;
+    &#125;
+&#125;
+</code></pre>
+<h2 id="FactoryBean"><a href="#FactoryBean" class="headerlink" title="FactoryBean"></a>FactoryBean</h2><p>之前单独写过一篇，请见<a target="_blank" rel="noopener" href="https://blog.duval.top/2020/10/07/%E5%86%8D%E8%AF%BBSpring%E6%BA%90%E7%A0%81%E4%B9%8B%E4%BA%8C-FactoryBean/">《再读Spring源码之二 FactoryBean》</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2020/10/26/%E5%86%8D%E8%AF%BBSpring%E6%BA%90%E7%A0%81%E4%B9%8B%E4%B8%89-%E5%B8%B8%E7%94%A8%E6%89%A9%E5%B1%95%E7%82%B9/" data-id="cltba3oms001g18r1bxfsf64d" data-title="再读Spring源码之三 常用扩展点" class="article-share-link"><span class="fa fa-share">Teilen</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spring/" rel="tag">Spring</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag">源码分析</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/11/14/%E4%BB%A3%E7%A0%81%E6%95%B4%E6%B4%81%E4%B9%8B%E9%81%93/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Neuer</strong>
+      <div class="article-nav-title">
+        
+          《代码整洁之道》
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/10/07/%E5%86%8D%E8%AF%BBSpring%E6%BA%90%E7%A0%81%E4%B9%8B%E4%BA%8C-FactoryBean/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Älter</strong>
+      <div class="article-nav-title">再读Spring源码之二 FactoryBean</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Kategorien</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JAVA/">JAVA</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Java/">Java</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Spring/">Spring</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%80%BB%E7%BB%93/">总结</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/">读书笔记</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/CAS%E5%8E%9F%E7%90%86/" rel="tag">CAS原理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/IO/" rel="tag">IO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/" rel="tag">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/" rel="tag">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/" rel="tag">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NIO/" rel="tag">NIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/" rel="tag">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%A0%81%E6%95%B4%E6%B4%81%E4%B9%8B%E9%81%93/" rel="tag">代码整洁之道</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8/" rel="tag">垃圾回收器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/" rel="tag">垃圾收集器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/" rel="tag">性能分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6/" rel="tag">文件描述符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag">源码分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98/" rel="tag">生产问题</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%9C%BA%E5%88%B6/" rel="tag">类加载机制</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" rel="tag">线程池</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" rel="tag">读书笔记</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%BE%93%E5%85%A5%E8%BE%93%E5%87%BA%E6%B5%81/" rel="tag">输入输出流</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/CAS%E5%8E%9F%E7%90%86/" style="font-size: 10px;">CAS原理</a> <a href="/tags/IO/" style="font-size: 10px;">IO</a> <a href="/tags/JVM/" style="font-size: 18.33px;">JVM</a> <a href="/tags/Java/" style="font-size: 16.67px;">Java</a> <a href="/tags/MySQL/" style="font-size: 15px;">MySQL</a> <a href="/tags/NIO/" style="font-size: 11.67px;">NIO</a> <a href="/tags/Netty/" style="font-size: 13.33px;">Netty</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/Spring/" style="font-size: 16.67px;">Spring</a> <a href="/tags/%E4%BB%A3%E7%A0%81%E6%95%B4%E6%B4%81%E4%B9%8B%E9%81%93/" style="font-size: 10px;">代码整洁之道</a> <a href="/tags/%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8/" style="font-size: 13.33px;">垃圾回收器</a> <a href="/tags/%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/" style="font-size: 10px;">垃圾收集器</a> <a href="/tags/%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/" style="font-size: 10px;">性能分析</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="font-size: 15px;">数据库</a> <a href="/tags/%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6/" style="font-size: 10px;">文件描述符</a> <a href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" style="font-size: 20px;">源码分析</a> <a href="/tags/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98/" style="font-size: 13.33px;">生产问题</a> <a href="/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%9C%BA%E5%88%B6/" style="font-size: 10px;">类加载机制</a> <a href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" style="font-size: 10px;">线程池</a> <a href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" style="font-size: 10px;">读书笔记</a> <a href="/tags/%E8%BE%93%E5%85%A5%E8%BE%93%E5%87%BA%E6%B5%81/" style="font-size: 10px;">输入输出流</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archiv</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/04/">April 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">January 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">December 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">November 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">July 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">May 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">January 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/08/">August 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/06/">June 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">letzter Beitrag</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/04/08/Java-%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%8E%9F%E7%90%86-6-ZGC-%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/">Java 虚拟机原理 (六) ZGC 垃圾收集器</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/09/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98-3-%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E6%B5%B7%E6%81%A9%E6%B3%95%E5%88%99/">生产问题(3) 应用开发过程中的海恩法则</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/07/%E6%B7%B1%E5%85%A5-MySQL-6-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/">深入 MySQL (六) 常见问题汇总</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/06/%E6%B7%B1%E5%85%A5-MySQL-5-%E9%94%81/">深入 MySQL (五) 锁</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/05/%E6%B7%B1%E5%85%A5-MySQL-4-%E7%B4%A2%E5%BC%95/">深入 MySQL (四) 索引</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2024 <br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

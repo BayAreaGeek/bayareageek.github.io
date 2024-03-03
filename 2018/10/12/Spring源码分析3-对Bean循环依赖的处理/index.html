@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>Spring源码分析3-对Bean循环依赖的处理 | </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="本文主要是分析Spring如何处理循环依赖，分别从构造器注入循环依赖、setter注入循环依赖、prototype范围的循环依赖三个方面进行详细分析。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spring源码分析3-对Bean循环依赖的处理">
+<meta property="og:url" content="http://example.com/2018/10/12/Spring%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%903-%E5%AF%B9Bean%E5%BE%AA%E7%8E%AF%E4%BE%9D%E8%B5%96%E7%9A%84%E5%A4%84%E7%90%86/index.html">
+<meta property="og:site_name">
+<meta property="og:description" content="本文主要是分析Spring如何处理循环依赖，分别从构造器注入循环依赖、setter注入循环依赖、prototype范围的循环依赖三个方面进行详细分析。">
+<meta property="og:locale">
+<meta property="article:published_time" content="2018-10-12T07:47:01.000Z">
+<meta property="article:modified_time" content="2024-03-03T08:57:04.786Z">
+<meta property="article:tag" content="源码分析">
+<meta property="article:tag" content="Spring">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="null" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<meta name="generator" content="Hexo 7.1.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo"></a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Suche"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Suche"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-Spring源码分析3-对Bean循环依赖的处理" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/10/12/Spring%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%903-%E5%AF%B9Bean%E5%BE%AA%E7%8E%AF%E4%BE%9D%E8%B5%96%E7%9A%84%E5%A4%84%E7%90%86/" class="article-date">
+  <time class="dt-published" datetime="2018-10-12T07:47:01.000Z" itemprop="datePublished">2018-10-12</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Spring/">Spring</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      Spring源码分析3-对Bean循环依赖的处理
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>本文主要是分析Spring如何处理循环依赖，分别从构造器注入循环依赖、setter注入循环依赖、prototype范围的循环依赖三个方面进行详细分析。</p>
+<span id="more"></span>
+
+<p>正式开始前先废话一下：</p>
+<p>之前写了两篇近似于流水账的Spring源码分析，写到后边越来越多看不懂的地方（所以<a target="_blank" rel="noopener" href="http://blog.duval.top/2018/07/12/Spring%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%901-RESTful%20Web%E5%90%AF%E5%8A%A8%E8%BF%87%E7%A8%8B/">分析1</a>和<a target="_blank" rel="noopener" href="http://blog.duval.top/2018/07/12/Spring%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%902-%E4%B8%8A%E4%B8%8B%E6%96%87%E5%88%B7%E6%96%B0%E8%BF%87%E7%A8%8B/">分析2</a>大家就当是流水账看看罢了，没什么营养）。之后回头细细一想，感觉精力都花在了Spring的上下文环节，至于面向切面编程AOP、控制反转IOC、依赖注入DI等等机制的实现原理都一窍不通。后来我看了一本书<a target="_blank" rel="noopener" href="https://pan.baidu.com/s/1dbVQ6QFxwxp9_noNCy6xHg">《Spring源码深度解析》</a>，终于开始恍然大悟。</p>
+<p>我明白直接研究Spring的核心机制，不应该从RestfultWeb入手，因为那样子其实是从Spring boot层面开始阅读源码了。</p>
+<p>可以阅读这篇文章<a target="_blank" rel="noopener" href="https://www.jianshu.com/p/42620a0a2c33">《Spring,Spring MVC及Spring Boot区别》</a>大致了解。</p>
+<p>所以直接按照书上介绍的内容去啃源码就对了。另外提一下就是书上的Spring版本要比现在的版本老了，但是核心思想一样的，底层的源码改动不大，可以正常阅读。</p>
+<p>读到《Spring源码深度解析》5章6节的循环依赖的时候，感觉有挺多不明白的地方，后来逐个调试后，发现了很多有趣的东西。所以通过这篇文章记录下来。</p>
+<p>首先要知道Spring框架允许setter注入循环依赖，但对于构造器注入循环依赖、prototype范围的循环依赖，框架都没法很好解决，<br>然后直接抛异常终止程序。我们尝试从源码层面去分析这三者的不同。</p>
+<p>我们先定义两个类：</p>
+<pre><code class="java">@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class TestA &#123;
+    private TestB testB;
+
+    @Override
+    public String toString() &#123;
+        return &quot;TestA&quot;;
+    &#125;
+&#125;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class TestB &#123;
+    private TestA testA;
+
+    @Override
+    public String toString() &#123;
+        return &quot;TestB&quot;;
+    &#125;
+&#125;
+</code></pre>
+<p>这里我采用了lombock的注解@Data来自动生成getter&#x2F;setter、构造器、toString等方法，例外地我特地重写了toString方法。因为lombock自动生成的toString方法会导致栈溢出，后文我会提及这个。</p>
+<h2 id="构造器注入循环依赖"><a href="#构造器注入循环依赖" class="headerlink" title="构造器注入循环依赖"></a>构造器注入循环依赖</h2><p>在xml中注入这两个bean，使其出现循环依赖。scope默认是singleton的。</p>
+<pre><code class="xml">    &lt;bean id=&quot;testA&quot; class=&quot;com.example.circle.TestA&quot;&gt;
+        &lt;constructor-arg index=&quot;0&quot; ref=&quot;testB&quot;&gt;&lt;/constructor-arg&gt;
+    &lt;/bean&gt;
+    &lt;bean id=&quot;testB&quot; class=&quot;com.example.circle.TestB&quot;&gt;
+        &lt;constructor-arg index=&quot;0&quot; ref=&quot;testA&quot;&gt;&lt;/constructor-arg&gt;
+    &lt;/bean&gt;
+</code></pre>
+<p>在main方法里尝试去加载和获取这些bean（后文的类似，不再重复）</p>
+<pre><code class="java">    //测试构造器注入的依赖处理
+    context = new ClassPathXmlApplicationContext(&quot;classpath:circle/constructor/circle.xml&quot;);
+    testA = (TestA) context.getBean(&quot;testA&quot;);
+    System.out.println(testA.toString());
+</code></pre>
+<p>运行后，可以注意到报错如下：</p>
+<pre><code>Exception in thread &quot;main&quot; org.springframework.beans.factory.BeanCreationException: Error creating bean with name &#39;testA&#39; defined in class path resource [circle/constructor/circle.xml]: Cannot resolve reference to bean &#39;testB&#39; while setting constructor argument; nested exception is org.springframework.beans.factory.BeanCreationException: Error creating bean with name &#39;testB&#39; defined in class path resource [circle/constructor/circle.xml]: Cannot resolve reference to bean &#39;testA&#39; while setting constructor argument; nested exception is org.springframework.beans.factory.BeanCurrentlyInCreationException: Error creating bean with name &#39;testA&#39;: Requested bean is currently in creation: Is there an unresolvable circular reference?
+    at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:378)
+    at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:110)
+    at org.springframework.beans.factory.support.ConstructorResolver.resolveConstructorArguments(ConstructorResolver.java:625)
+    at org.springframework.beans.factory.support.ConstructorResolver.autowireConstructor(ConstructorResolver.java:153)
+    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.autowireConstructor(AbstractAutowireCapableBeanFactory.java:1267)
+    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1124)
+    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:535)
+    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:495)
+    at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:317)
+    at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:222)
+    at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:315)
+    at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+    at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:759)
+    at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:869)
+    at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:550)
+    at org.springframework.context.support.ClassPathXmlApplicationContext.&lt;init&gt;(ClassPathXmlApplicationContext.java:144)
+    at org.springframework.context.support.ClassPathXmlApplicationContext.&lt;init&gt;(ClassPathXmlApplicationContext.java:85)
+    at com.example.circle.CircleMain.main(CircleMain.java:29)
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name &#39;testB&#39; defined in class path resource [circle/constructor/circle.xml]: Cannot resolve reference to bean &#39;testA&#39; while setting constructor argument; nested exception is org.springframework.beans.factory.BeanCurrentlyInCreationException: Error creating bean with name &#39;testA&#39;: Requested bean is currently in creation: Is there an unresolvable circular reference?
+    at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:378)
+    at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:110)
+    at org.springframework.beans.factory.support.ConstructorResolver.resolveConstructorArguments(ConstructorResolver.java:625)
+    at org.springframework.beans.factory.support.ConstructorResolver.autowireConstructor(ConstructorResolver.java:153)
+    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.autowireConstructor(AbstractAutowireCapableBeanFactory.java:1267)
+    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1124)
+    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:535)
+    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:495)
+    at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:317)
+    at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:222)
+    at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:315)
+    at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+    at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:367)
+    ... 17 more
+Caused by: org.springframework.beans.factory.BeanCurrentlyInCreationException: Error creating bean with name &#39;testA&#39;: Requested bean is currently in creation: Is there an unresolvable circular reference?
+    at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.beforeSingletonCreation(DefaultSingletonBeanRegistry.java:339)
+    at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:215)
+    at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:315)
+    at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+    at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:367)
+    ... 29 more
+</code></pre>
+<p>里边的异常堆栈是我们分析源码得好帮手，顺着堆栈一步步进去看看吧。</p>
+<p>看到最开始新建上下文的时候，上下文主动刷新，代码逻辑进入了finishBeanFactoryInitialization(beanFactory)，这个方法的作用是实例化所有的剩余的非懒加载的单例。</p>
+<p>继续深究，我们看到进入了下边这段代码里。因为默认的scope是singleton的，所以会进入这段逻辑里去。这里的关键是getSingleton方法，这个方法的第二个入参是个函数ObjectFactory&lt;?&gt; singletonFactory，函数调用的createBean是个实例化Bean的动作。所有的bean实例化都会经过createBean这个方法，prototype范围的bean也不例外，区别就在于它不需要经过。getSingleton的逻辑。</p>
+<pre><code class="java">// Create bean instance.
+if (mbd.isSingleton()) &#123;
+    sharedInstance = getSingleton(beanName, () -&gt; &#123;
+        try &#123;
+            return createBean(beanName, mbd, args);
+        &#125;
+        catch (BeansException ex) &#123;
+            // Explicitly remove instance from singleton cache: It might have been put there
+            // eagerly by the creation process, to allow for circular reference resolution.
+            // Also remove any beans that received a temporary reference to the bean.
+            destroySingleton(beanName);
+            throw ex;
+        &#125;
+    &#125;);
+    bean = getObjectForBeanInstance(sharedInstance, name, beanName, mbd);
+&#125;
+</code></pre>
+<p>对于getSingleton,他其实最关键是做了三个事情，第一是通过beforeSingletonCreation(beanName)标注这个bean正在创建中，第二是通过第二个入参函数获得实例化后的bean singletonFactory.getObject()，第三是将步骤一的标注删除。</p>
+<pre><code class="java">public Object getSingleton(String beanName, ObjectFactory&lt;?&gt; singletonFactory) &#123;
+        Assert.notNull(beanName, &quot;Bean name must not be null&quot;);
+        synchronized (this.singletonObjects) &#123;
+            Object singletonObject = this.singletonObjects.get(beanName);
+            //当这个单例还没有实例化
+            if (singletonObject == null) &#123;
+                if (this.singletonsCurrentlyInDestruction) &#123;
+                    throw new BeanCreationNotAllowedException(beanName,
+                            &quot;Singleton bean creation not allowed while singletons of this factory are in destruction &quot; +
+                            &quot;(Do not request a bean from a BeanFactory in a destroy method implementation!)&quot;);
+                &#125;
+                if (logger.isDebugEnabled()) &#123;
+                    logger.debug(&quot;Creating shared instance of singleton bean &#39;&quot; + beanName + &quot;&#39;&quot;);
+                &#125;
+                //创建单例前，做标记
+                beforeSingletonCreation(beanName);
+                boolean newSingleton = false;
+                boolean recordSuppressedExceptions = (this.suppressedExceptions == null);
+                if (recordSuppressedExceptions) &#123;
+                    this.suppressedExceptions = new LinkedHashSet&lt;&gt;();
+                &#125;
+                try &#123;
+                    //调用工厂方法获得实例化后的bean
+                    singletonObject = singletonFactory.getObject();
+                    newSingleton = true;
+                &#125;
+                catch (IllegalStateException ex) &#123;
+                    // Has the singleton object implicitly appeared in the meantime -&gt;
+                    // if yes, proceed with it since the exception indicates that state.
+                    singletonObject = this.singletonObjects.get(beanName);
+                    if (singletonObject == null) &#123;
+                        throw ex;
+                    &#125;
+                &#125;
+                catch (BeanCreationException ex) &#123;
+                    if (recordSuppressedExceptions) &#123;
+                        for (Exception suppressedException : this.suppressedExceptions) &#123;
+                            ex.addRelatedCause(suppressedException);
+                        &#125;
+                    &#125;
+                    throw ex;
+                &#125;
+                finally &#123;
+                    if (recordSuppressedExceptions) &#123;
+                        this.suppressedExceptions = null;
+                    &#125;
+                    //创建单例后，删除标记
+                    afterSingletonCreation(beanName);
+                &#125;
+                if (newSingleton) &#123;
+                    addSingleton(beanName, singletonObject);
+                &#125;
+            &#125;
+            return singletonObject;
+        &#125;
+    &#125;
+</code></pre>
+<p>着重留意这个标注单例bean正在创建的过程，其实就是在singletonsCurrentlyInCreation添加一个集合元素。这个动作在循环依赖检测中起到关键作用。</p>
+<pre><code class="java">protected void beforeSingletonCreation(String beanName) &#123;
+        if (!this.inCreationCheckExclusions.contains(beanName) &amp;&amp; !this.singletonsCurrentlyInCreation.add(beanName)) &#123;
+            throw new BeanCurrentlyInCreationException(beanName);
+        &#125;
+&#125;
+</code></pre>
+<p>当这个bean被标注正在创建中后，就会进入创建阶段，我们深究下去，代码到了AbstractAutowireCapableBeanFactory#doCreateBean里，这里有个关键的动作：</p>
+<pre><code class="java">if (instanceWrapper == null) &#123;
+    instanceWrapper = createBeanInstance(beanName, mbd, args);
+&#125;
+</code></pre>
+<p>展开createBeanInstance方法。我们看到最后，注意到构造BeanWrapper的时候，会根据bean的注入方式选择构造方法。像现在所调试的构造器注入方式，会去bean里找到相应的构造器来对bean进行实例化TestA，但因为TestA通过构造器注入了TestB，就会触发一个新的doGetBean动作，去实例化这个TestB。恩，正是这个地方会引发构造器循环依赖。后文会说到的setter注入，因为使用的是默认的构造函数，所以在这个地方不存在循环依赖的问题。</p>
+<pre><code class="java">protected BeanWrapper createBeanInstance(String beanName, RootBeanDefinition mbd, @Nullable Object[] args) &#123;
+        // Make sure bean class is actually resolved at this point.
+        Class&lt;?&gt; beanClass = resolveBeanClass(mbd, beanName);
+
+        if (beanClass != null &amp;&amp; !Modifier.isPublic(beanClass.getModifiers()) &amp;&amp; !mbd.isNonPublicAccessAllowed()) &#123;
+            throw new BeanCreationException(mbd.getResourceDescription(), beanName,
+                    &quot;Bean class isn&#39;t public, and non-public access not allowed: &quot; + beanClass.getName());
+        &#125;
+
+        Supplier&lt;?&gt; instanceSupplier = mbd.getInstanceSupplier();
+        if (instanceSupplier != null) &#123;
+            return obtainFromSupplier(instanceSupplier, beanName);
+        &#125;
+
+        if (mbd.getFactoryMethodName() != null)  &#123;
+            return instantiateUsingFactoryMethod(beanName, mbd, args);
+        &#125;
+
+        // Shortcut when re-creating the same bean...
+        boolean resolved = false;
+        boolean autowireNecessary = false;
+        if (args == null) &#123;
+            synchronized (mbd.constructorArgumentLock) &#123;
+                if (mbd.resolvedConstructorOrFactoryMethod != null) &#123;
+                    resolved = true;
+                    autowireNecessary = mbd.constructorArgumentsResolved;
+                &#125;
+            &#125;
+        &#125;
+        if (resolved) &#123;
+            if (autowireNecessary) &#123;
+                return autowireConstructor(beanName, mbd, null, null);
+            &#125;
+            else &#123;
+                return instantiateBean(beanName, mbd);
+            &#125;
+        &#125;
+
+        // Need to determine the constructor...
+        //根据入参情况（是否为构造器注入)选择对应的构造器来实例化这个bean
+        Constructor&lt;?&gt;[] ctors = determineConstructorsFromBeanPostProcessors(beanClass, beanName);
+        if (ctors != null ||
+                mbd.getResolvedAutowireMode() == RootBeanDefinition.AUTOWIRE_CONSTRUCTOR ||
+                mbd.hasConstructorArgumentValues() || !ObjectUtils.isEmpty(args))  &#123;
+            return autowireConstructor(beanName, mbd, ctors, args);
+        &#125;
+
+        // No special handling: simply use no-arg constructor.
+        //使用默认构造函数实例化这个bean
+        return instantiateBean(beanName, mbd);
+    &#125;
+</code></pre>
+<p>OK，上文已经因为实例化TestA,然后触发了TestB的实例化。其实TestB的实例化过程和TestA是一模一样的，同样到了createBeanInstance也会尝试实例化TestA。好的，现在又到了实例化TestA的过程，我们来看看这一次有啥不一样。我们发现又回到了这里：</p>
+<pre><code class="java">// Create bean instance.
+if (mbd.isSingleton()) &#123;
+    sharedInstance = getSingleton(beanName, () -&gt; &#123;
+        try &#123;
+            return createBean(beanName, mbd, args);
+        &#125;
+        catch (BeansException ex) &#123;
+            // Explicitly remove instance from singleton cache: It might have been put there
+            // eagerly by the creation process, to allow for circular reference resolution.
+            // Also remove any beans that received a temporary reference to the bean.
+            destroySingleton(beanName);
+            throw ex;
+        &#125;
+    &#125;);
+    bean = getObjectForBeanInstance(sharedInstance, name, beanName, mbd);
+&#125;
+</code></pre>
+<pre><code class="java">protected void beforeSingletonCreation(String beanName) &#123;
+    if (!this.inCreationCheckExclusions.contains(beanName) &amp;&amp; !this.singletonsCurrentlyInCreation.add(beanName)) &#123;
+        throw new BeanCurrentlyInCreationException(beanName);
+    &#125;
+&#125;
+</code></pre>
+<p>当再一次因为TestA来到这个beforeSingletonCreation的时候，会发现他已经处于单例创建中。那就糟了，直接抛异常终止了。</p>
+<p>这就是构造器循环依赖注入的处理逻辑。</p>
+<h2 id="setter注入循环依赖"><a href="#setter注入循环依赖" class="headerlink" title="setter注入循环依赖"></a>setter注入循环依赖</h2><p>我们知道setter单例注入循环依赖是Spring框架允许的，为什么会有这个差异呢，我们先来了解DefaultSingletonBeanRegistry里的几个重要的缓存数据。</p>
+<pre><code class="java">    /** Cache of singleton objects: bean name --&gt; bean instance */
+    /**已经实例化完毕的单例缓存**/
+    private final Map&lt;String, Object&gt; singletonObjects = new ConcurrentHashMap&lt;&gt;(256);
+
+    /** Cache of singleton factories: bean name --&gt; ObjectFactory */
+    /**单例工厂类缓存**/
+    private final Map&lt;String, ObjectFactory&lt;?&gt;&gt; singletonFactories = new HashMap&lt;&gt;(16);
+
+    /** Cache of early singleton objects: bean name --&gt; bean instance */
+    /**提前曝光的单例实例对象缓存**/
+    private final Map&lt;String, Object&gt; earlySingletonObjects = new HashMap&lt;&gt;(16);
+
+    /** Names of beans that are currently in creation */
+    /**正在创建中的单例名字集合**/
+    private final Set&lt;String&gt; singletonsCurrentlyInCreation =
+            Collections.newSetFromMap(new ConcurrentHashMap&lt;&gt;(16));
+</code></pre>
+<p>从上边我们可以大致推测，已经创建好的Bean存放在singletonObjects，正在创建中还没注入完毕的bean暂存在earlySingletonObjects，那些创建中的单例bean的工厂类放在singletonFactories，正在创建中的bean的名字放在singletonsCurrentlyInCreation；</p>
+<p>下边我们看看这几个东西怎么发挥作用。</p>
+<p>先看看这个常用的getSingleton方法，第二个入参是限定是否需要获取那些为了解决循环依赖而被提前曝光的半成品bean（部分属性还没注入，属性为null)。可以看到其实这个方法是一个三级缓存机制，如果有成品的bean在singletonObjects，直接返回；如果有提前曝光的bean在earlySingletonObjects，获取并返回；如果有半成品bean的工厂方法在singletonFactories，那就用工厂类生成实例，放进earlySingletonObjects，并且删除工厂方法.</p>
+<pre><code class="java">protected Object getSingleton(String beanName, boolean allowEarlyReference) &#123;
+    Object singletonObject = this.singletonObjects.get(beanName);
+    if (singletonObject == null &amp;&amp; isSingletonCurrentlyInCreation(beanName)) &#123;
+        synchronized (this.singletonObjects) &#123;
+            singletonObject = this.earlySingletonObjects.get(beanName);
+            if (singletonObject == null &amp;&amp; allowEarlyReference) &#123;
+                ObjectFactory&lt;?&gt; singletonFactory = this.singletonFactories.get(beanName);
+                if (singletonFactory != null) &#123;
+                    singletonObject = singletonFactory.getObject();
+                    this.earlySingletonObjects.put(beanName, singletonObject);
+                    this.singletonFactories.remove(beanName);
+                &#125;
+            &#125;
+        &#125;
+    &#125;
+    return singletonObject;
+&#125;
+</code></pre>
+<p>我们再回到AbstractAutowireCapableBeanFactory#doCreateBean，setter注入的循环依赖也会经过</p>
+<pre><code class="java">if (instanceWrapper == null) &#123;
+    instanceWrapper = createBeanInstance(beanName, mbd, args);
+&#125;
+</code></pre>
+<p>上文我们说到，因为使用的是默认构造函数，不存在递归调用获取bean的问题，所以程序可以继续往下执行到：</p>
+<pre><code class="java">// Eagerly cache singletons to be able to resolve circular references
+// even when triggered by lifecycle interfaces like BeanFactoryAware.
+boolean earlySingletonExposure = (mbd.isSingleton() &amp;&amp; this.allowCircularReferences &amp;&amp;
+        isSingletonCurrentlyInCreation(beanName));
+if (earlySingletonExposure) &#123;
+    if (logger.isDebugEnabled()) &#123;
+        logger.debug(&quot;Eagerly caching bean &#39;&quot; + beanName +
+                &quot;&#39; to allow for resolving potential circular references&quot;);
+    &#125;
+    addSingletonFactory(beanName, () -&gt; getEarlyBeanReference(beanName, mbd, bean));
+&#125;
+</code></pre>
+<p>这个地方很有意思，注解也写到提前缓存这个单例bean以解决循环依赖。这里通过addSingletonFactory提前暴露了这个bean的一个工厂方法，以及bean自身。这里要注意也暴露的bean本身，因为getEarlyBeanReference(beanName, mbd, bean)的第三个入参。</p>
+<pre><code class="java">protected void addSingletonFactory(String beanName, ObjectFactory&lt;?&gt; singletonFactory) &#123;
+    Assert.notNull(singletonFactory, &quot;Singleton factory must not be null&quot;);
+    synchronized (this.singletonObjects) &#123;
+        if (!this.singletonObjects.containsKey(beanName)) &#123;
+            this.singletonFactories.put(beanName, singletonFactory);
+            this.earlySingletonObjects.remove(beanName);
+            this.registeredSingletons.add(beanName);
+        &#125;
+    &#125;
+&#125;
+</code></pre>
+<p>正式因为这个地方提前暴露了这个构造中的bean，当别的bean构造过程中依赖他的时候，能够获取到一个半成品的bean，并且在属性注入的时候，注入这个半成品。从而避免了循环引用。举个例子：经过createBeanInstance方法得到一个半成品TestA后，并且提前曝光TestA这个半成品，然后尝试通过populateBean对这个半成品进行属性TestB的注入，发现TestB还没创建，从而调用GetBean获取TestB的实例。接着TestB进入创建环节，同样是经过createBeanInstance方法得到一个半成品TestB，并提前曝光自己，然后尝试通过populateBean对这个半成品进行属性TestA的注入，找到一个创建中的半成品TestA，成功注入返回。返回后，TestA半成品得到TestB后也成功注入，得到全部返回。</p>
+<p>这样子就成功解决了循环依赖的问题。</p>
+<h2 id="prototype范围的循环依赖"><a href="#prototype范围的循环依赖" class="headerlink" title="prototype范围的循环依赖"></a>prototype范围的循环依赖</h2><p>prototype范围的bean在创建时候的待遇不太一样，看最关键的代码AbstractBeanFactory#doGetBean：</p>
+<pre><code class="java">
+if (mbd.isPrototype()) &#123;
+    // It&#39;s a prototype -&gt; create a new instance.
+    Object prototypeInstance = null;
+    try &#123;
+        beforePrototypeCreation(beanName);
+        prototypeInstance = createBean(beanName, mbd, args);
+    &#125;
+    finally &#123;
+        afterPrototypeCreation(beanName);
+    &#125;
+    bean = getObjectForBeanInstance(prototypeInstance, name, beanName, mbd);
+&#125;
+</code></pre>
+<p>这里边直接调用了createBean，而不像单例情况下，前后分别做标记的添加和删除。那样子上边说到的三级缓存就没有效果啦，因为第一个if判断条件不成立，直接返回了，只剩下一级缓存。而且创建前还做了一个特别的动作：</p>
+<pre><code class="java">beforePrototypeCreation(beanName);
+</code></pre>
+<p>这其实也是一个打标记，也是用作循环检测的。这个标记在前文用到了，请看：</p>
+<pre><code class="java">// Fail if we&#39;re already creating this bean instance:
+// We&#39;re assumably within a circular reference.
+if (isPrototypeCurrentlyInCreation(beanName)) &#123;
+    throw new BeanCurrentlyInCreationException(beanName);
+&#125;
+</code></pre>
+<p>这里看到检测出循环依赖就马上短路了。</p>
+<p>测试demo请移步：<a target="_blank" rel="noopener" href="https://github.com/duvalCC/SpringDemo">https://github.com/duvalCC/SpringDemo</a></p>
+<p><strong>参考资料</strong><br>1.<a target="_blank" rel="noopener" href="https://www.iflym.com/index.php/code/201208280001.html">Spring中循环引用的处理-1</a><br>2.<a target="_blank" rel="noopener" href="https://www.iflym.com/index.php/code/201208280002.html">Spring中循环引用的处理-2</a><br>3.<a target="_blank" rel="noopener" href="https://www.iflym.com/index.php/code/201208280003.html">Spring中循环引用的处理-3</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2018/10/12/Spring%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%903-%E5%AF%B9Bean%E5%BE%AA%E7%8E%AF%E4%BE%9D%E8%B5%96%E7%9A%84%E5%A4%84%E7%90%86/" data-id="cltba3omq000y18r1fbbl36bb" data-title="Spring源码分析3-对Bean循环依赖的处理" class="article-share-link"><span class="fa fa-share">Teilen</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spring/" rel="tag">Spring</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag">源码分析</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/01/05/%E6%B7%B1%E5%85%A5JAVA%E8%AF%AD%E8%A8%80%E2%80%94CAS%E5%8E%9F%E7%90%86%E5%89%96%E6%9E%90/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Neuer</strong>
+      <div class="article-nav-title">
+        
+          深入JAVA语言—CAS原理剖析
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2018/07/12/Spring%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%901-RESTful%20Web%E5%90%AF%E5%8A%A8%E8%BF%87%E7%A8%8B/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Älter</strong>
+      <div class="article-nav-title">Spring源码分析1-RESTfulWeb启动过程</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Kategorien</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JAVA/">JAVA</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Java/">Java</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Spring/">Spring</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%80%BB%E7%BB%93/">总结</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/">读书笔记</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/CAS%E5%8E%9F%E7%90%86/" rel="tag">CAS原理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/IO/" rel="tag">IO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/" rel="tag">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/" rel="tag">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/" rel="tag">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NIO/" rel="tag">NIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/" rel="tag">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%A0%81%E6%95%B4%E6%B4%81%E4%B9%8B%E9%81%93/" rel="tag">代码整洁之道</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8/" rel="tag">垃圾回收器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/" rel="tag">垃圾收集器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/" rel="tag">性能分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6/" rel="tag">文件描述符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag">源码分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98/" rel="tag">生产问题</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%9C%BA%E5%88%B6/" rel="tag">类加载机制</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" rel="tag">线程池</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" rel="tag">读书笔记</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%BE%93%E5%85%A5%E8%BE%93%E5%87%BA%E6%B5%81/" rel="tag">输入输出流</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/CAS%E5%8E%9F%E7%90%86/" style="font-size: 10px;">CAS原理</a> <a href="/tags/IO/" style="font-size: 10px;">IO</a> <a href="/tags/JVM/" style="font-size: 18.33px;">JVM</a> <a href="/tags/Java/" style="font-size: 16.67px;">Java</a> <a href="/tags/MySQL/" style="font-size: 15px;">MySQL</a> <a href="/tags/NIO/" style="font-size: 11.67px;">NIO</a> <a href="/tags/Netty/" style="font-size: 13.33px;">Netty</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/Spring/" style="font-size: 16.67px;">Spring</a> <a href="/tags/%E4%BB%A3%E7%A0%81%E6%95%B4%E6%B4%81%E4%B9%8B%E9%81%93/" style="font-size: 10px;">代码整洁之道</a> <a href="/tags/%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8/" style="font-size: 13.33px;">垃圾回收器</a> <a href="/tags/%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/" style="font-size: 10px;">垃圾收集器</a> <a href="/tags/%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/" style="font-size: 10px;">性能分析</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="font-size: 15px;">数据库</a> <a href="/tags/%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6/" style="font-size: 10px;">文件描述符</a> <a href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" style="font-size: 20px;">源码分析</a> <a href="/tags/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98/" style="font-size: 13.33px;">生产问题</a> <a href="/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%9C%BA%E5%88%B6/" style="font-size: 10px;">类加载机制</a> <a href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" style="font-size: 10px;">线程池</a> <a href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" style="font-size: 10px;">读书笔记</a> <a href="/tags/%E8%BE%93%E5%85%A5%E8%BE%93%E5%87%BA%E6%B5%81/" style="font-size: 10px;">输入输出流</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archiv</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/04/">April 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">January 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">December 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">November 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">July 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">May 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">January 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/08/">August 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/06/">June 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">letzter Beitrag</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/04/08/Java-%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%8E%9F%E7%90%86-6-ZGC-%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/">Java 虚拟机原理 (六) ZGC 垃圾收集器</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/09/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98-3-%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E6%B5%B7%E6%81%A9%E6%B3%95%E5%88%99/">生产问题(3) 应用开发过程中的海恩法则</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/07/%E6%B7%B1%E5%85%A5-MySQL-6-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/">深入 MySQL (六) 常见问题汇总</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/06/%E6%B7%B1%E5%85%A5-MySQL-5-%E9%94%81/">深入 MySQL (五) 锁</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/05/%E6%B7%B1%E5%85%A5-MySQL-4-%E7%B4%A2%E5%BC%95/">深入 MySQL (四) 索引</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2024 <br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>Netty 源码分析之 六 流水线处理器: Handler | </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="本文是永顺大牛写的系列教程《源码之下无秘密 ── 做最好的 Netty 源码分析教程》的续写章节。本章主要介绍Netty中用来处理数据流的handler以及底层原理。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Netty 源码分析之 六 流水线处理器: Handler">
+<meta property="og:url" content="http://example.com/2020/07/15/Netty-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B-%E5%85%AD-%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%A4%84%E7%90%86%E5%99%A8-Handler/index.html">
+<meta property="og:site_name">
+<meta property="og:description" content="本文是永顺大牛写的系列教程《源码之下无秘密 ── 做最好的 Netty 源码分析教程》的续写章节。本章主要介绍Netty中用来处理数据流的handler以及底层原理。">
+<meta property="og:locale">
+<meta property="og:image" content="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FNetty%20%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%20%E5%85%AD%20Handler%20%E7%9A%84%E5%90%84%E7%A7%8D%E5%A7%BF%E5%8A%BF%2FNettyHandler%E9%93%BE%E5%BC%8F%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FNetty%20%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%20%E5%85%AD%20Handler%20%E7%9A%84%E5%90%84%E7%A7%8D%E5%A7%BF%E5%8A%BF%2FNetty%20Handler%E7%B1%BB%E5%9B%BE.png">
+<meta property="article:published_time" content="2020-07-15T14:15:35.000Z">
+<meta property="article:modified_time" content="2024-02-18T13:17:51.574Z">
+<meta property="article:tag" content="Netty">
+<meta property="article:tag" content="源码分析">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FNetty%20%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%20%E5%85%AD%20Handler%20%E7%9A%84%E5%90%84%E7%A7%8D%E5%A7%BF%E5%8A%BF%2FNettyHandler%E9%93%BE%E5%BC%8F%E7%BB%93%E6%9E%84.png">
+  
+    <link rel="alternate" href="/atom.xml" title="null" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<meta name="generator" content="Hexo 7.1.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo"></a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Suche"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Suche"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-Netty-源码分析之-六-流水线处理器-Handler" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2020/07/15/Netty-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B-%E5%85%AD-%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%A4%84%E7%90%86%E5%99%A8-Handler/" class="article-date">
+  <time class="dt-published" datetime="2020-07-15T14:15:35.000Z" itemprop="datePublished">2020-07-15</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Java/">Java</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      Netty 源码分析之 六 流水线处理器: Handler
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>本文是永顺大牛写的系列教程<a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007282628#comment-area">《源码之下无秘密 ── 做最好的 Netty 源码分析教程》</a>的续写章节。本章主要介绍Netty中用来处理数据流的handler以及底层原理。</p>
+<span id="more"></span>
+<h2 id="写在最前"><a href="#写在最前" class="headerlink" title="写在最前"></a>写在最前</h2><p>永顺前辈已写完的章节有如下：</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000006824091">Netty 源码分析之 番外篇 Java NIO 的前生今世</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007282597">Netty 源码分析之 零 磨刀不误砍柴工 源码分析环境搭建</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007282789">Netty 源码分析之 一 揭开 Bootstrap 神秘的红盖头 (客户端)</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007283053">Netty 源码分析之 一 揭开 Bootstrap 神秘的红盖头 (服务器端)</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007308934">Netty 源码分析之 二 贯穿 Netty 的大动脉 ── ChannelPipeline (一)</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007309311">Netty 源码分析之 二 贯穿 Netty 的大动脉 ── ChannelPipeline (二)</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007403873">Netty 源码分析之 三 我就是大名鼎鼎的 EventLoop(一)</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007403937">Netty 源码分析之 三 我就是大名鼎鼎的 EventLoop(二)</a></li>
+</ul>
+<p>笔者尝试续写的章节：</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://blog.duval.top/2020/07/04/Netty-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B-%E5%9B%9B-Promise-%E4%B8%8E-Future-%E5%8F%8C%E5%AD%90%E6%98%9F%E7%9A%84%E7%A7%98%E5%AF%86/">Netty 源码分析之 四 Promise 与 Future: 双子星的秘密</a></li>
+<li><a target="_blank" rel="noopener" href="https://blog.duval.top/2020/07/09/Netty-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B-%E4%BA%94-%E5%A5%94%E8%85%BE%E7%9A%84%E8%A1%80%E6%B6%B2-ByteBuf/">Netty 源码分析之 五 奔腾的血液: ByteBuf</a></li>
+<li><a target="_blank" rel="noopener" href="https://blog.duval.top/2020/07/15/Netty-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B-%E5%85%AD-%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%A4%84%E7%90%86%E5%99%A8-Handler/">Netty 源码分析之 六 流水线处理器: Handler</a></li>
+</ul>
+<p><em>本文使用的netty版本为4.1.33.Final</em></p>
+<h2 id="回忆handler"><a href="#回忆handler" class="headerlink" title="回忆handler"></a>回忆handler</h2><h3 id="链式结构"><a href="#链式结构" class="headerlink" title="链式结构"></a>链式结构</h3><p>我们先来回忆下在<a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000007308934">《Netty 源码分析之 二 贯穿 Netty 的大动脉 ── ChannelPipeline (一)》</a>提到过来的handler链式结构：</p>
+<p><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FNetty%20%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%20%E5%85%AD%20Handler%20%E7%9A%84%E5%90%84%E7%A7%8D%E5%A7%BF%E5%8A%BF%2FNettyHandler%E9%93%BE%E5%BC%8F%E7%BB%93%E6%9E%84.png" alt="NettyHandler链式结构.png"></p>
+<ul>
+<li>handler分为实现ChannelInboundHandler接口的入站处理器和实现ChannelOutboundHandler接口的出站处理器；</li>
+<li>handler由DefaultChannelHandlerContext进行包装，并组成一个双向链表；</li>
+<li>所有的入站操作从HeadContext出发，沿着链表经由每一个入站处理器处理后向TailContext方向传递；</li>
+<li>所有的出站操作从TailContext出发，沿着链表经由每一个出站处理器处理后向HeadContext方向传递；</li>
+<li>无论是入站操作抑或是出站操作的传递，都可以在handler中按照业务需求被中断或者改变传递方向。</li>
+</ul>
+<p>本文的封面图使用了一张流水线卡通图，正因为这个链式结构非常类似于制造业里的流水线，handler就像是流水里的处理节点，而入站出站数据就如同流水线上被加工的产品。</p>
+<h3 id="初始化"><a href="#初始化" class="headerlink" title="初始化"></a>初始化</h3><p>一个常见的客户端初始化过程是这个样子的：</p>
+<pre><code class="java">      Bootstrap bootstrap = new Bootstrap();
+        ChannelFuture future = bootstrap.group(new NioEventLoopGroup(10))
+                .channel(NioSocketChannel.class)
+                .handler(new ChannelInitializer&lt;SocketChannel&gt;() &#123;
+                    @Override
+                    protected void initChannel(SocketChannel ch) throws Exception &#123;
+                        // 管道中添加基于换行符分割字符串的解析器
+                        ch.pipeline().addLast(new LineBasedFrameDecoder(1024));
+                        // 管道中添加字符串编码解码器
+                        ch.pipeline().addLast(new StringDecoder(Charset.forName(&quot;UTF-8&quot;)));
+                        ch.pipeline().addLast(new StringEncoder(Charset.forName(&quot;UTF-8&quot;)));
+                        // 管道中添加服务端处理逻辑
+                        ch.pipeline().addLast(new MyClientEchoHandler());
+                    &#125;
+                &#125;).connect(&quot;127.0.0.1&quot;, 9898).sync();
+
+    future.channel().closeFuture().sync();
+</code></pre>
+<p>在ChannelInitializer的实现方法中，调用ch.pipeline().addLast方法，不断地将handler追加到双向链表中（TailContext之前），从而形成上图所示的双向链表结构。</p>
+<h2 id="入站handler"><a href="#入站handler" class="headerlink" title="入站handler"></a>入站handler</h2><p>入站handler都实现了ChannelInboundHandler接口：</p>
+<pre><code class="java">public interface ChannelInboundHandler extends ChannelHandler &#123;
+
+    void channelRegistered(ChannelHandlerContext ctx) throws Exception;
+
+    void channelUnregistered(ChannelHandlerContext ctx) throws Exception;
+
+    void channelActive(ChannelHandlerContext ctx) throws Exception;
+
+    void channelInactive(ChannelHandlerContext ctx) throws Exception;
+
+    void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception;
+
+    void channelReadComplete(ChannelHandlerContext ctx) throws Exception;
+
+    void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception;
+
+    void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception;
+
+    @Override
+    @SuppressWarnings(&quot;deprecation&quot;)
+    void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception;
+&#125;
+</code></pre>
+<p>该接口内定义了常见的入站操作包括channelActive、channelRead、channelInactive等，还支持用户自定义入站操作userEventTriggered。</p>
+<p>ChannelInboundHandlerAdapter是ChannelInboundHandler接口的一个默认实现，内部所有方法都是将入站操作往后传递，不作任何业务处理，如channelRead方法：</p>
+<pre><code class="java">    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception &#123;
+        ctx.fireChannelRead(msg);
+    &#125;
+</code></pre>
+<p>ChannelInboundHandlerAdapter并没有包含任何业务逻辑，用户的handler子类可以继承它，然后覆盖并实现其中的部分方法。下文要提到的<strong>SimpleChannelInboundHandler</strong>以及<strong>ByteToMessageDecoder</strong>正是其中两个案例。</p>
+<h2 id="出站handler"><a href="#出站handler" class="headerlink" title="出站handler"></a>出站handler</h2><p>出站handler都实现了ChannelOutboundHandler接口，并提供常见的出站操作（bind、connect、close、write、flush等等）：</p>
+<pre><code class="java">public interface ChannelOutboundHandler extends ChannelHandler &#123;
+
+    void bind(ChannelHandlerContext ctx, SocketAddress localAddress, ChannelPromise promise) throws Exception;
+
+    void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress,
+            SocketAddress localAddress, ChannelPromise promise) throws Exception;
+
+    void disconnect(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception;
+
+    void close(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception;
+
+    void deregister(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception;
+
+    void read(ChannelHandlerContext ctx) throws Exception;
+
+    void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception;
+
+    void flush(ChannelHandlerContext ctx) throws Exception;
+&#125;
+</code></pre>
+<p>类似地，ChannelOutboundHandlerAdapter是该接口的一个默认实现，内部所有方法都是将出站操作往前传递，不作任何业务处理，如write方法：</p>
+<pre><code class="java">    @Override
+    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception &#123;
+        ctx.write(msg, promise);
+    &#125;
+</code></pre>
+<p>同样地，子类可以继承ChannelOutboundHandlerAdapter，并覆盖实现其中的任何方法。MessageToByteEncoder和MessageToMessageEncoder这两个编码器是常见的实现子类。</p>
+<h2 id="解码器decoder"><a href="#解码器decoder" class="headerlink" title="解码器decoder"></a>解码器decoder</h2><p>解码器是典型的入站处理器。解码器处理的入站数据结构一般是ByteBuf。</p>
+<h3 id="ByteToMessageDecoder"><a href="#ByteToMessageDecoder" class="headerlink" title="ByteToMessageDecoder"></a>ByteToMessageDecoder</h3><p>例如ByteToMessageDecoder，可以从ByteBuf这种字节流中读取数据，然后转换为其他形式的消息对象（也可以是ByteBuf）。</p>
+<pre><code class="java">     @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception &#123;
+        if (msg instanceof ByteBuf) &#123;
+            // 仅处理ByteBuf对象
+            // 新建out列表，用于保存解码得到的对象列表
+            CodecOutputList out = CodecOutputList.newInstance();
+            try &#123;
+                ByteBuf data = (ByteBuf) msg;
+                first = cumulation == null;
+                if (first) &#123;
+                    cumulation = data;
+                &#125; else &#123;
+                    cumulation = cumulator.cumulate(ctx.alloc(), cumulation, data);
+                &#125;
+                // 调用解码实现方法
+                callDecode(ctx, cumulation, out);
+            &#125; catch (DecoderException e) &#123;
+                throw e;
+            &#125; catch (Exception e) &#123;
+                throw new DecoderException(e);
+            &#125; finally &#123;
+                if (cumulation != null &amp;&amp; !cumulation.isReadable()) &#123;
+                    numReads = 0;
+                    cumulation.release();
+                    cumulation = null;
+                &#125; else if (++ numReads &gt;= discardAfterReads) &#123;
+                    // We did enough reads already try to discard some bytes so we not risk to see a OOME.
+                    // See https://github.com/netty/netty/issues/4275
+                    numReads = 0;
+                    discardSomeReadBytes();
+                &#125;
+
+                int size = out.size();
+                decodeWasNull = !out.insertSinceRecycled();
+                // 调用fireChannelRead传递解码得到的对象列表out
+                fireChannelRead(ctx, out, size);
+                // 回收对象
+                out.recycle();
+            &#125;
+        &#125; else &#123;
+            ctx.fireChannelRead(msg);
+        &#125;
+    &#125;
+</code></pre>
+<pre><code class="java">    protected void callDecode(ChannelHandlerContext ctx, ByteBuf in, List&lt;Object&gt; out) &#123;
+        try &#123;
+            while (in.isReadable()) &#123;
+                // ...省略部分代码...
+                decodeRemovalReentryProtection(ctx, in, out);
+                // ...省略部分代码...
+            &#125;
+        &#125; catch (DecoderException e) &#123;
+             throw e;
+        &#125; catch (Exception cause) &#123;
+             throw new DecoderException(cause);
+        &#125;
+     &#125;
+
+     final void decodeRemovalReentryProtection(ChannelHandlerContext ctx, ByteBuf in, List&lt;Object&gt; out) throws Exception &#123;
+        decodeState = STATE_CALLING_CHILD_DECODE;
+        try &#123;
+            decode(ctx, in, out);
+        &#125; finally &#123;
+            boolean removePending = decodeState == STATE_HANDLER_REMOVED_PENDING;
+            decodeState = STATE_INIT;
+            if (removePending) &#123;
+                handlerRemoved(ctx);
+            &#125;
+        &#125;
+    &#125;
+</code></pre>
+<p>可见callDecode内部持续循环消费字节流，然后底层调用了子类实现的抽象方法decode进行解码。其中，常见的实现类有LineBasedFrameDecoder。</p>
+<h3 id="LineBasedFrameDecoder"><a href="#LineBasedFrameDecoder" class="headerlink" title="LineBasedFrameDecoder"></a>LineBasedFrameDecoder</h3><p>LineBasedFrameDecoder实现了根据一个ByteBuf以换行符分割为多个ByteBuf的功能，核心实现如下：</p>
+<pre><code class="java">
+    @Override
+    protected final void decode(ChannelHandlerContext ctx, ByteBuf in, List&lt;Object&gt; out) throws Exception &#123;
+        // 解码得到的对象都放out列表中
+        Object decoded = decode(ctx, in);
+        if (decoded != null) &#123;
+            out.add(decoded);
+        &#125;
+    &#125;
+
+    protected Object decode(ChannelHandlerContext ctx, ByteBuf buffer) throws Exception &#123;
+        final int eol = findEndOfLine(buffer);
+        if (!discarding) &#123;
+            if (eol &gt;= 0) &#123;
+                // 如果找到换行符
+                final ByteBuf frame;
+                // 计算当前帧的长度以及分隔符长度
+                final int length = eol - buffer.readerIndex();
+                final int delimLength = buffer.getByte(eol) == &#39;\r&#39;? 2 : 1;
+    
+                if (length &gt; maxLength) &#123;
+                    // 如果该帧长度大于最大长度，则抛异常
+                    buffer.readerIndex(eol + delimLength);
+                    fail(ctx, length);
+                    return null;
+                &#125;
+
+                if (stripDelimiter) &#123;
+                    // frame去掉分隔符
+                    frame = buffer.readRetainedSlice(length);
+                    buffer.skipBytes(delimLength);
+                &#125; else &#123;
+                    // frame包含分隔符
+                    frame = buffer.readRetainedSlice(length + delimLength);
+                &#125;
+
+                return frame;
+            &#125; else &#123;
+                final int length = buffer.readableBytes();
+                if (length &gt; maxLength) &#123;
+                    // 如果没有换行符，而且该帧长度大于最大长度
+                    // 则标记discarding为true，且丢弃所有可读数据
+                    discardedBytes = length;
+                    buffer.readerIndex(buffer.writerIndex());
+                    discarding = true;
+                    offset = 0;
+                    if (failFast) &#123;
+                        fail(ctx, &quot;over &quot; + discardedBytes);
+                    &#125;
+                &#125;
+                return null;
+            &#125;
+        &#125; else &#123;
+            if (eol &gt;= 0) &#123;
+                // 如果有换行符，丢弃换行符前的所有可读数据
+                final int length = discardedBytes + eol - buffer.readerIndex();
+                final int delimLength = buffer.getByte(eol) == &#39;\r&#39;? 2 : 1;
+                buffer.readerIndex(eol + delimLength);
+                discardedBytes = 0;
+                discarding = false;
+                if (!failFast) &#123;
+                    fail(ctx, length);
+                &#125;
+            &#125; else &#123;
+                // 如果没有换行符，丢弃所有可读数据
+                discardedBytes += buffer.readableBytes();
+                buffer.readerIndex(buffer.writerIndex());
+                // We skip everything in the buffer, we need to set the offset to 0 again.
+                offset = 0;
+            &#125;
+            return null;
+        &#125;
+    &#125;
+
+     private int findEndOfLine(final ByteBuf buffer) &#123;
+        int totalLength = buffer.readableBytes();
+        // 找到换行符\n所在的下标
+        int i = buffer.forEachByte(buffer.readerIndex() + offset, totalLength - offset, ByteProcessor.FIND_LF);
+        if (i &gt;= 0) &#123;
+            offset = 0;
+            // 某些系统以\r\n作为换行符，这里修改下标为\r的下标
+            if (i &gt; 0 &amp;&amp; buffer.getByte(i - 1) == &#39;\r&#39;) &#123;
+                i--;
+            &#125;
+        &#125; else &#123;
+            offset = totalLength;
+        &#125;
+        return i;
+    &#125;
+</code></pre>
+<h3 id="MessageToMessageDecoder"><a href="#MessageToMessageDecoder" class="headerlink" title="MessageToMessageDecoder"></a>MessageToMessageDecoder</h3><p>上一小节的ByteToMessageDecoder实现了从ByteBuf到消息对象的解码转换，而MessageToMessageDecoder可以实现消息之间的解码转换。核心实现如下：</p>
+<pre><code class="java"> @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception &#123;
+        CodecOutputList out = CodecOutputList.newInstance();
+        try &#123;
+            // 检查msg是否满足指定的模板类型I
+            if (acceptInboundMessage(msg)) &#123;
+                @SuppressWarnings(&quot;unchecked&quot;)
+                I cast = (I) msg;
+                try &#123;
+                    // 调用decode抽象方法
+                    decode(ctx, cast, out);
+                &#125; finally &#123;
+                    ReferenceCountUtil.release(cast);
+                &#125;
+            &#125; else &#123;
+                out.add(msg);
+            &#125;
+        &#125; catch (DecoderException e) &#123;
+            throw e;
+        &#125; catch (Exception e) &#123;
+            throw new DecoderException(e);
+        &#125; finally &#123;
+            int size = out.size();
+            for (int i = 0; i &lt; size; i ++) &#123;
+                ctx.fireChannelRead(out.getUnsafe(i));
+            &#125;
+            out.recycle();
+        &#125;
+    &#125;
+
+    /**
+     * Decode from one message to an other. This method will be called for each written message that can be handled
+     * by this decoder.
+     *
+     * @param ctx           the &#123;@link ChannelHandlerContext&#125; which this &#123;@link MessageToMessageDecoder&#125; belongs to
+     * @param msg           the message to decode to an other one
+     * @param out           the &#123;@link List&#125; to which decoded messages should be added
+     * @throws Exception    is thrown if an error occurs
+     */
+    protected abstract void decode(ChannelHandlerContext ctx, I msg, List&lt;Object&gt; out) throws Exception;
+</code></pre>
+<p>MessageToMessageDecoder里的业务非常少，核心的解码转换逻辑还需要子类去实现。常用的实现类有StringDecoder。</p>
+<h3 id="StringDecoder"><a href="#StringDecoder" class="headerlink" title="StringDecoder"></a>StringDecoder</h3><p>StringDecoder非常简单，输入模板类型ByteBuf，然后转换为String。核心解码转换方法如下：</p>
+<pre><code class="java">@Override
+protected void decode(ChannelHandlerContext ctx, ByteBuf msg, List&lt;Object&gt; out) throws Exception &#123;
+    out.add(msg.toString(charset));
+&#125;
+</code></pre>
+<h2 id="编码器encoder"><a href="#编码器encoder" class="headerlink" title="编码器encoder"></a>编码器encoder</h2><p>编码器是典型的出站处理器。同时，也分为MessageToMessageEncoder和MessageToByteEncoder两种。其功能和实现刚好是解码器的逆过程，所以这里不再详细分析，不然本文就沦为水文一篇了。</p>
+<p>此外，类似地，StringEncoder也是StringDecoder的逆过程，实现也非常简单此处不作赘言。</p>
+<h2 id="SimpleChannelInboundHandler"><a href="#SimpleChannelInboundHandler" class="headerlink" title="SimpleChannelInboundHandler"></a>SimpleChannelInboundHandler</h2><p>用户自定义handler的时候最常用到的父类是SimpleChannelInboundHandler。相比ChannelInboundHandlerAdapter，它为用户做了消息对象的数据类型强制转换，方便数据处理，并且确保消息对象被释放掉。核心实现如下：</p>
+<pre><code class="java">    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception &#123;
+        boolean release = true;
+        try &#123;
+            if (acceptInboundMessage(msg)) &#123;
+                // 类型强制转换
+                @SuppressWarnings(&quot;unchecked&quot;)
+                I imsg = (I) msg;
+                channelRead0(ctx, imsg);
+            &#125; else &#123;
+                release = false;
+                ctx.fireChannelRead(msg);
+            &#125;
+        &#125; finally &#123;
+            if (autoRelease &amp;&amp; release) &#123;
+                ReferenceCountUtil.release(msg);
+            &#125;
+        &#125;
+    &#125;
+
+    protected abstract void channelRead0(ChannelHandlerContext ctx, I msg) throws Exception;
+
+</code></pre>
+<p>用户需要实现channelRead0方法，自定义业务逻辑。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>最后以一张类图温习本文：</p>
+<p><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FNetty%20%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B%20%E5%85%AD%20Handler%20%E7%9A%84%E5%90%84%E7%A7%8D%E5%A7%BF%E5%8A%BF%2FNetty%20Handler%E7%B1%BB%E5%9B%BE.png" alt="Netty Handler类图.png"></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2020/07/15/Netty-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B-%E5%85%AD-%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%A4%84%E7%90%86%E5%99%A8-Handler/" data-id="cltba3omn000m18r10nvb38nu" data-title="Netty 源码分析之 六 流水线处理器: Handler" class="article-share-link"><span class="fa fa-share">Teilen</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Netty/" rel="tag">Netty</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag">源码分析</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/08/21/%E5%86%8D%E8%AF%BBSpring%E6%BA%90%E7%A0%81%E4%B9%8B%E4%B8%80-Spring%E5%A6%82%E4%BD%95%E5%AF%B9%E4%BB%98%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Neuer</strong>
+      <div class="article-nav-title">
+        
+          再读Spring源码之一 Spring如何对付循环引用
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/07/09/Netty-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8B-%E4%BA%94-%E5%A5%94%E8%85%BE%E7%9A%84%E8%A1%80%E6%B6%B2-ByteBuf/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Älter</strong>
+      <div class="article-nav-title">Netty 源码分析之 五 奔腾的血液: ByteBuf</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Kategorien</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JAVA/">JAVA</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Java/">Java</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Spring/">Spring</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%80%BB%E7%BB%93/">总结</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/">读书笔记</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/CAS%E5%8E%9F%E7%90%86/" rel="tag">CAS原理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/IO/" rel="tag">IO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/" rel="tag">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/" rel="tag">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/" rel="tag">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NIO/" rel="tag">NIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/" rel="tag">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%A0%81%E6%95%B4%E6%B4%81%E4%B9%8B%E9%81%93/" rel="tag">代码整洁之道</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8/" rel="tag">垃圾回收器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/" rel="tag">垃圾收集器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/" rel="tag">性能分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6/" rel="tag">文件描述符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag">源码分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98/" rel="tag">生产问题</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%9C%BA%E5%88%B6/" rel="tag">类加载机制</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" rel="tag">线程池</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" rel="tag">读书笔记</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%BE%93%E5%85%A5%E8%BE%93%E5%87%BA%E6%B5%81/" rel="tag">输入输出流</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/CAS%E5%8E%9F%E7%90%86/" style="font-size: 10px;">CAS原理</a> <a href="/tags/IO/" style="font-size: 10px;">IO</a> <a href="/tags/JVM/" style="font-size: 18.33px;">JVM</a> <a href="/tags/Java/" style="font-size: 16.67px;">Java</a> <a href="/tags/MySQL/" style="font-size: 15px;">MySQL</a> <a href="/tags/NIO/" style="font-size: 11.67px;">NIO</a> <a href="/tags/Netty/" style="font-size: 13.33px;">Netty</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/Spring/" style="font-size: 16.67px;">Spring</a> <a href="/tags/%E4%BB%A3%E7%A0%81%E6%95%B4%E6%B4%81%E4%B9%8B%E9%81%93/" style="font-size: 10px;">代码整洁之道</a> <a href="/tags/%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8/" style="font-size: 13.33px;">垃圾回收器</a> <a href="/tags/%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/" style="font-size: 10px;">垃圾收集器</a> <a href="/tags/%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/" style="font-size: 10px;">性能分析</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="font-size: 15px;">数据库</a> <a href="/tags/%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6/" style="font-size: 10px;">文件描述符</a> <a href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" style="font-size: 20px;">源码分析</a> <a href="/tags/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98/" style="font-size: 13.33px;">生产问题</a> <a href="/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%9C%BA%E5%88%B6/" style="font-size: 10px;">类加载机制</a> <a href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" style="font-size: 10px;">线程池</a> <a href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" style="font-size: 10px;">读书笔记</a> <a href="/tags/%E8%BE%93%E5%85%A5%E8%BE%93%E5%87%BA%E6%B5%81/" style="font-size: 10px;">输入输出流</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archiv</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/04/">April 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">January 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">December 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">November 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">July 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">May 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">January 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/08/">August 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/06/">June 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">letzter Beitrag</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/04/08/Java-%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%8E%9F%E7%90%86-6-ZGC-%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/">Java 虚拟机原理 (六) ZGC 垃圾收集器</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/09/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98-3-%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E6%B5%B7%E6%81%A9%E6%B3%95%E5%88%99/">生产问题(3) 应用开发过程中的海恩法则</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/07/%E6%B7%B1%E5%85%A5-MySQL-6-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/">深入 MySQL (六) 常见问题汇总</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/06/%E6%B7%B1%E5%85%A5-MySQL-5-%E9%94%81/">深入 MySQL (五) 锁</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/05/%E6%B7%B1%E5%85%A5-MySQL-4-%E7%B4%A2%E5%BC%95/">深入 MySQL (四) 索引</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2024 <br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

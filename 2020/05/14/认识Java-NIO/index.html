@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>认识 Java NIO | </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="Java支持三种IO模式，分别是同步阻塞IO（BIO）、同步非阻塞IO（NIO)、多路复用IO（I&#x2F;O multiplexing）以及异步IO(AIO)。本文第一章节将简单介绍这三种IO模式，后续章节将详细介绍同步非阻塞IO（NIO）以及多路复用IO。 (首页图是蔚来NIO图，侵权必删。&#x3D; &#x3D;! )">
+<meta property="og:type" content="article">
+<meta property="og:title" content="认识 Java NIO">
+<meta property="og:url" content="http://example.com/2020/05/14/%E8%AE%A4%E8%AF%86Java-NIO/index.html">
+<meta property="og:site_name">
+<meta property="og:description" content="Java支持三种IO模式，分别是同步阻塞IO（BIO）、同步非阻塞IO（NIO)、多路复用IO（I&#x2F;O multiplexing）以及异步IO(AIO)。本文第一章节将简单介绍这三种IO模式，后续章节将详细介绍同步非阻塞IO（NIO）以及多路复用IO。 (首页图是蔚来NIO图，侵权必删。&#x3D; &#x3D;! )">
+<meta property="og:locale">
+<meta property="og:image" content="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2F%E4%BA%86%E8%A7%A3Java%20NIO%2FByteBuffer.png">
+<meta property="og:image" content="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2F%E4%BA%86%E8%A7%A3Java%20NIO%2Fchannel%E7%BB%A7%E6%89%BF%E5%85%B3%E7%B3%BB.png">
+<meta property="og:image" content="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2F%E4%BA%86%E8%A7%A3Java%20NIO%2FIO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E6%A8%A1%E5%9E%8B.png">
+<meta property="og:image" content="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2F%E4%BA%86%E8%A7%A3Java%20NIO%2FKQueueSelectorImpl.jpg">
+<meta property="article:published_time" content="2020-05-14T07:27:54.000Z">
+<meta property="article:modified_time" content="2024-02-18T13:17:51.584Z">
+<meta property="article:tag" content="NIO">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2F%E4%BA%86%E8%A7%A3Java%20NIO%2FByteBuffer.png">
+  
+    <link rel="alternate" href="/atom.xml" title="null" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<meta name="generator" content="Hexo 7.1.1"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo"></a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Suche"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Suche"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-认识Java-NIO" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2020/05/14/%E8%AE%A4%E8%AF%86Java-NIO/" class="article-date">
+  <time class="dt-published" datetime="2020-05-14T07:27:54.000Z" itemprop="datePublished">2020-05-14</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Java/">Java</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      认识 Java NIO
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>Java支持三种IO模式，分别是同步阻塞IO（BIO）、同步非阻塞IO（NIO)、多路复用IO（I&#x2F;O multiplexing）以及异步IO(AIO)。本文第一章节将简单介绍这三种IO模式，后续章节将详细介绍同步非阻塞IO（NIO）以及多路复用IO。</p>
+<p>(首页图是蔚来NIO图，侵权必删。&#x3D; &#x3D;! )</p>
+<span id="more"></span>
+<h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><h3 id="同步阻塞IO"><a href="#同步阻塞IO" class="headerlink" title="同步阻塞IO"></a>同步阻塞IO</h3><p>传统的IO是同步阻塞型IO（BIO）。阻塞型IO主要问题是会造成大量的系统资源浪费。例如我们通过Socket读取一个TCP连接的数据，当没有读取到数据时，read方法会阻塞当前线程。如下：</p>
+<p>服务端socket读取数据将阻塞线程：</p>
+<pre><code class="java">ServerSocket serverSocket = bind(listenIp, listenPort);
+while (true) &#123;
+    // 阻塞等待数据到来
+    Socket socket = serverSocket.accept();
+    // 新建线程来处理该socket数据
+    executorService.execute(() -&gt; &#123;
+        BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        // 读取socket中的数据，如无数据将发生阻塞
+        while (StringUtils.isNotBlank(str = br.readLine()))&#123;
+            //doSomething
+        &#125;
+    &#125;
+&#125;
+</code></pre>
+<p>客户端读取数据同样会阻塞线程：</p>
+<pre><code class="java">this.socket = new Socket(this.host, this.port);
+this.is = socket.getInputStream();
+// 阻塞读取
+this.is.read();
+</code></pre>
+<p>如果服务端接受了大量客户端请求，很有可能使得大量的线程阻塞而占用大量机器资源，甚至使得服务器崩溃。</p>
+<p>除此之外，传统IO是基于字节流的，用户只能顺序地从流中读取数据，且不能随意改变读取指针。</p>
+<h3 id="Java-NIO"><a href="#Java-NIO" class="headerlink" title="Java NIO"></a>Java NIO</h3><p>Java NIO是同步非阻塞型IO。NIO引入了Channel和Buffer这两个概念，用户可以从Channel中读取Buffer，也可以将Buffer写入Channel。<br>实现了AbstractSelectableChannel父类的Channel，可以通过configureBlocking方法可以将一个Channel设置为非阻塞模式，如下：</p>
+<pre><code class="java">serverSocketChannel.configureBlocking(false);
+</code></pre>
+<h3 id="Java-多路复用IO"><a href="#Java-多路复用IO" class="headerlink" title="Java 多路复用IO"></a>Java 多路复用IO</h3><p>我在这里将多路复用IO从上一小节剥离出来，是想让大家区分同步非阻塞型IO和多路复用IO的区别。</p>
+<p>基于Java NIO的同步非阻塞IO，再结合Java NIO提供的Selector多路复用选择器，Java可以实现多路复用IO。NIO通过将Chanel注册进Selector中，由Selector来监听多个Channel的IO事件，从而避免单个Channel的读写阻塞导致整个线程挂起的情况。这样子，NIO就可以通过一个线程同时高效地管理多个Channel。</p>
+<p>Selector的底层使用了底层系统调用，包括epoll、select等等，在主流的各个系统都有支持。但这部分内容不在本文的探讨范围之内。</p>
+<h3 id="Java-AIO"><a href="#Java-AIO" class="headerlink" title="Java AIO"></a>Java AIO</h3><p>AIO在Java中不常用，可以参考大咖写的 <a target="_blank" rel="noopener" href="https://colobu.com/2014/11/13/java-aio-introduction/">Java AIO编程</a></p>
+<h2 id="Buffer"><a href="#Buffer" class="headerlink" title="Buffer"></a>Buffer</h2><p>Buffer在NIO中作为数据的载体，用户可以从Channel中读取Buffer，也可以将Buffer写入Channel。</p>
+<p>Buffer根据数据类型划分为ByteBuffer、ShortBuffer、CharBuffer、DoubleBuffer、FloatBuffer、IntBuffer等类型。这些Buffer都包含了两个子类实现，一个是DirectBuffer，另外一个是HeapBuffer。</p>
+<p>其中以ByteBuffer类型为例，继承关系图如下所示：</p>
+<p><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2F%E4%BA%86%E8%A7%A3Java%20NIO%2FByteBuffer.png" alt="ByteBuffer.png"></p>
+<h3 id="Buffer使用"><a href="#Buffer使用" class="headerlink" title="Buffer使用"></a>Buffer使用</h3><p>Buffer使用步骤非常简单：</p>
+<ul>
+<li>初始化指定容量大小，并分配directBuffer或heapBuffer；</li>
+<li>初始化后Buffer默认为写模式，用户可以向Buffer中写入数据；</li>
+<li>用户写入完成后，调用flip()方法之后可以切换到读模式；</li>
+<li>Buffer处于读模式下，用户可以读取数据；</li>
+<li>数据读取完毕后，用户可以调用clear()进行清理，或者调用compact()进行压缩。</li>
+</ul>
+<p>使用样例如下:</p>
+<pre><code class="java">public static void main(String[] args) &#123;
+    //ByteBuffer byteBuffer = ByteBuffer.allocateDirect(9); // direct buffer
+    ByteBuffer byteBuffer = ByteBuffer.allocate(9);
+    byteBuffer.put(&quot;hello&quot;.getBytes());
+    byteBuffer.put(&quot; &quot;.getBytes());
+    byteBuffer.put(&quot;NIO&quot;.getBytes());
+    // 写模式切换到读模式
+    byteBuffer.flip();
+
+    byte[] content = new byte[9];
+    byteBuffer.get(content);
+    System.out.println(new String(content));
+&#125;
+</code></pre>
+<h3 id="Buffer底层实现"><a href="#Buffer底层实现" class="headerlink" title="Buffer底层实现"></a>Buffer底层实现</h3><p>Buffer抽象类里有四个关键字段，他们的大小关系为：mark &lt;&#x3D; position &lt;&#x3D; limit &lt;&#x3D; capacity，分别含义是：</p>
+<ul>
+<li><strong>mark</strong> 调用mark()时候会缓存position的值，等待调用reset()时候恢复使用，默认值为-1；</li>
+<li><strong>postition</strong> 当前的读指针或者写指针所在位置；</li>
+<li><strong>limit</strong> 写模式下等于capacity，而读模式写对应的是写模式下的position；</li>
+<li><strong>capacity</strong> 最大容量，与buffer所处的模式无关。</li>
+</ul>
+<p>测试样例如下：</p>
+<pre><code>@Test
+public void test() &#123;
+    IntBuffer intBuffer = IntBuffer.allocate(10);
+    LOG.info(&quot;position=&#123;&#125;, limit=&#123;&#125;, capacity=&#123;&#125;&quot;, intBuffer.position(), intBuffer.limit(), intBuffer.capacity());
+    intBuffer.put(0);
+    intBuffer.put(1);
+    LOG.info(&quot;position=&#123;&#125;, limit=&#123;&#125;, capacity=&#123;&#125;&quot;, intBuffer.position(), intBuffer.limit(), intBuffer.capacity());
+    intBuffer.flip();
+    LOG.info(&quot;position=&#123;&#125;, limit=&#123;&#125;, capacity=&#123;&#125;&quot;, intBuffer.position(), intBuffer.limit(), intBuffer.capacity());
+    intBuffer.get();
+    LOG.info(&quot;position=&#123;&#125;, limit=&#123;&#125;, capacity=&#123;&#125;&quot;, intBuffer.position(), intBuffer.limit(), intBuffer.capacity());
+&#125;
+</code></pre>
+<pre><code>2020-05-15 16:32:20.934 [main] INFO  [IntBufferTest:18] - position=0, limit=10, capacity=10
+2020-05-15 16:32:20.944 [main] INFO  [IntBufferTest:21] - position=2, limit=10, capacity=10
+2020-05-15 16:32:20.944 [main] INFO  [IntBufferTest:23] - position=0, limit=2, capacity=10
+2020-05-15 16:32:20.945 [main] INFO  [IntBufferTest:25] - position=1, limit=2, capacity=10
+</code></pre>
+<h3 id="Buffer常用API"><a href="#Buffer常用API" class="headerlink" title="Buffer常用API"></a>Buffer常用API</h3><h4 id="flip-写-读"><a href="#flip-写-读" class="headerlink" title="flip 写-&gt;读"></a>flip 写-&gt;读</h4><p>flip方法可以将buffer从写模式切换到读模式。原理很简单，就是将limit置为当前position，且position置0。</p>
+<pre><code class="java">public final Buffer flip() &#123;
+    limit = position;
+    position = 0;
+    mark = -1;
+    return this;
+&#125;
+</code></pre>
+<h4 id="clear-读-写-读"><a href="#clear-读-写-读" class="headerlink" title="clear 读,写 -&gt; 读"></a>clear 读,写 -&gt; 读</h4><p>clear方法不管buffer是读或写状态，都会清空buffer，重新恢复为初始写状态。但需要注意clear并<strong>没有清空原有数据</strong>，仅仅是修改了指针位置。依然可以读取到老的数据。</p>
+<pre><code class="java">public final Buffer clear() &#123;
+    position = 0;
+    limit = capacity;
+    mark = -1;
+    return this;
+&#125;
+</code></pre>
+<h4 id="compact-读-写"><a href="#compact-读-写" class="headerlink" title="compact 读 -&gt; 写"></a>compact 读 -&gt; 写</h4><p>该方法是Buffer子类里的方法，用于在读模式下压缩空间，将还没读到的数据复制到缓存数组开头，也就是从[position, limit)复制到[0, limit-position)。注意compact仅限于读模式下调用，调用之后buffer切换为写模式。以HeapIntBuffer为例：</p>
+<pre><code class="java">public IntBuffer compact() &#123;
+    // 复制[position, limit)到[0, limit-position)
+    System.arraycopy(hb, ix(position()), hb, ix(0), remaining());
+    // position置为limit-position，也就是写指针所在位置
+    position(remaining());
+    // 写模式下limit等于capacity
+    limit(capacity());
+    // 丢弃mark状态
+    discardMark();
+    return this;
+&#125;
+</code></pre>
+<h4 id="rewind"><a href="#rewind" class="headerlink" title="rewind"></a>rewind</h4><p>很容易将clear和revind混淆，其实看看源码就知道区别：</p>
+<pre><code class="java">public final Buffer rewind() &#123;
+    position = 0;
+    mark = -1;
+    return this;
+&#125;
+</code></pre>
+<p>由上可见，rewind没有修改limit，也就是没有切换buffer的读写模式，单纯是将position置为0。如果是读模式，相当于将读过的数据，重新从指针0开始再读一遍；如果是写模式，则是忽略已经写过的数据，从指针0位置重新开始写。</p>
+<h4 id="mark-reset"><a href="#mark-reset" class="headerlink" title="mark &amp;&amp; reset"></a>mark &amp;&amp; reset</h4><p>mark方法可以缓存当前的position指针，而reset方法则是将position恢复为之前mark所缓存的值。</p>
+<p>注意上边提及的所有方法都可以丢弃mark缓存，也就是说mark &amp;&amp; reset只有在读模式或者写模式写才能有效。例如：</p>
+<pre><code class="java">@Test
+public void testMark() &#123;
+    IntBuffer intBuffer = IntBuffer.allocate(10);
+    intBuffer.put(0);
+    intBuffer.put(1);
+    LOG.info(&quot;buffer=&#123;&#125;&quot;, intBuffer);
+    intBuffer.mark();
+    intBuffer.put(2);
+    intBuffer.put(3);
+    intBuffer.reset();
+    LOG.info(&quot;buffer=&#123;&#125;&quot;, intBuffer);
+&#125;
+</code></pre>
+<pre><code class="bash">2020-05-15 18:04:23.873 [main] INFO  [IntBufferTest:60] - buffer=java.nio.HeapIntBuffer[pos=2 lim=10 cap=10]
+2020-05-15 18:04:23.880 [main] INFO  [IntBufferTest:65] - buffer=java.nio.HeapIntBuffer[pos=2 lim=10 cap=10]
+</code></pre>
+<p>如图调用reset方法后，position重新恢复为mark所缓存的值。这时候继续写入数据的话，就会覆盖掉数值2和3。</p>
+<h3 id="Buffer的比较"><a href="#Buffer的比较" class="headerlink" title="Buffer的比较"></a>Buffer的比较</h3><p>以IntBuffer为例子，请见源码：</p>
+<pre><code class="java">public int compareTo(IntBuffer that) &#123;
+    int n = this.position() + Math.min(this.remaining(), that.remaining());
+    for (int i = this.position(), j = that.position(); i &lt; n; i++, j++) &#123;
+        int cmp = compare(this.get(i), that.get(j));
+        if (cmp != 0)
+            return cmp;
+    &#125;
+    return this.remaining() - that.remaining();
+&#125;
+</code></pre>
+<p>从源码可以看出两个buffer的比较其实只是对剩余未读的数据进行对比。换言之，只有处于读模式的buffer进行比较才会有意义。</p>
+<h2 id="Channel"><a href="#Channel" class="headerlink" title="Channel"></a>Channel</h2><p>channel在NIO中作为数据流的通道。常用几个Channel子类包括：FileChannel、DatagramChannel、SocketChannel、ServerSocketChannel等。继承关系如下：</p>
+<p><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2F%E4%BA%86%E8%A7%A3Java%20NIO%2Fchannel%E7%BB%A7%E6%89%BF%E5%85%B3%E7%B3%BB.png" alt="channel继承关系.png"></p>
+<h3 id="FileChannel"><a href="#FileChannel" class="headerlink" title="FileChannel"></a>FileChannel</h3><p>常用API：</p>
+<ul>
+<li><strong>open(Path path, OpenOption… options)</strong> 打开文件，可以通过options指定文件的打开参数（读写模式等）；</li>
+<li><strong>read(ByteBuffer dst)</strong> 从channel中读取数据，并写入ByteBuffer中；</li>
+<li><strong>write(ByteBuffer src)</strong> 读取ByteBuffer中的数据，并写入channel中；</li>
+<li><strong>position(long newPosition)</strong> 设置channel的position；</li>
+<li><strong>force(boolean metaData)</strong> 强制使得文件的所有变更落盘。metaData为true表示文件元数据变更也落盘，否则仅文件内容变更落盘；</li>
+<li><strong>transferTo(long position, long count,WritableByteChannel target)</strong> 将该fileChannel内容写入目标channel中；</li>
+<li><strong>truncate(long size)</strong> 将该channel截取为若干字节。</li>
+</ul>
+<p>使用样例：</p>
+<pre><code class="java">     @Test
+    public void testInputFromFileChannel() &#123;
+        FileChannel fileChannel = null;
+        try &#123;
+            fileChannel = FileChannel.open(new File(&quot;/Users/duval/input.txt&quot;).toPath(), StandardOpenOption.READ);
+            ByteBuffer readBuffer = ByteBuffer.allocate(100);
+            StringBuilder fileContent = new StringBuilder();
+            while (fileChannel.read(readBuffer) != -1) &#123;
+                readBuffer.flip();
+                fileContent.append(new String(readBuffer.array()));
+                readBuffer.clear();
+            &#125;
+            System.out.println(fileContent.toString());
+        &#125; catch (IOException e) &#123;
+            LOG.error(&quot;read failed&quot;, e);
+        &#125; finally &#123;
+            IOUtils.closeQuietly(fileChannel);
+        &#125;
+    &#125;
+
+    @Test
+    public void testOutputToFileChannel() &#123;
+        FileChannel fileChannel = null;
+        try &#123;
+            fileChannel =  FileChannel.open(new File(&quot;/Users/duval/output.txt&quot;).toPath(), StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+            ByteBuffer writeBuffer = ByteBuffer.allocate(1000);
+            writeBuffer.put(&quot;hello nio&quot;.getBytes());
+            writeBuffer.flip();
+            while (writeBuffer.hasRemaining()) &#123;
+                fileChannel.write(writeBuffer);
+            &#125;
+            // 强制数据落盘
+            fileChannel.force(true);
+        &#125; catch (IOException e) &#123;
+            LOG.error(&quot;write failed&quot;, e);
+        &#125; finally &#123;
+            IOUtils.closeQuietly(fileChannel);
+        &#125;
+    &#125;
+</code></pre>
+<h3 id="DatagramChannel"><a href="#DatagramChannel" class="headerlink" title="DatagramChannel"></a>DatagramChannel</h3><p>DatagramChannel可以用来实现UDP通讯。常用的API如下:</p>
+<ul>
+<li><strong>DatagramChannel open()</strong> 打开一个新的channel；</li>
+<li><strong>DatagramChannel bind(SocketAddress local)</strong> 将该channel绑定到某个地址上（ip+端口）；</li>
+<li><strong>SocketAddress receive(java.nio.ByteBuffer dst)</strong> 接收数据；</li>
+<li><strong>int send(java.nio.ByteBuffer src, java.net.SocketAddress target)</strong> 发送数据；</li>
+</ul>
+<p>使用样例：</p>
+<pre><code class="java">// UdpServer.java
+/**
+ * @author duval
+ * @date 2020-05-17 20:17
+ */
+@Slf4j
+public class UdpServer extends Thread &#123;
+
+    private DatagramChannel channel;
+
+    public UdpServer() throws IOException &#123;
+        this.channel = DatagramChannel.open();
+        this.channel.bind(new InetSocketAddress(&quot;localhost&quot;, 8080));
+    &#125;
+
+    @Override
+    public void run() &#123;
+        int num = 0;
+        while (true) &#123;
+            SocketAddress address;
+            ByteBuffer byteBuffer = ByteBuffer.allocate(15);
+            try &#123;
+                address = channel.receive(byteBuffer);
+
+                if (address != null &amp;&amp; byteBuffer.hasRemaining()) &#123;
+                    byte[] array = new byte[byteBuffer.position()];
+                    byteBuffer.flip();
+                    byteBuffer.get(array);
+                    byteBuffer.clear();
+                    log.info(&quot;reveive:&#123;&#125;&quot;, new String(array));
+
+                    response(address, num++);
+                &#125;
+            &#125; catch (IOException e) &#123;
+                log.error(&quot;receive failed&quot;, e);
+            &#125;
+        &#125;
+    &#125;
+
+    private void response(SocketAddress address, int num) throws IOException &#123;
+        ByteBuffer content = ByteBuffer.allocate(15);
+        content.put((&quot;resp &quot; + num).getBytes());
+        content.flip();
+        channel.send(content, address);
+    &#125;
+
+    public static void main(String args[]) throws IOException, InterruptedException &#123;
+        UdpServer server = new UdpServer();
+        server.start();
+        server.join();
+    &#125;
+&#125;
+</code></pre>
+<pre><code class="java">// UdpClient.java
+@Slf4j
+public class UdpClient extends Thread &#123;
+
+    private DatagramChannel channel;
+
+    public UdpClient() throws IOException &#123;
+        this.channel = DatagramChannel.open();
+    &#125;
+
+    @Override
+    public void run() &#123;
+        new Thread(new Runnable() &#123;
+            @Override
+            public void run() &#123;
+                while (true) &#123;
+                    SocketAddress address;
+                    ByteBuffer dataBuffer = ByteBuffer.allocate(15);
+                    try &#123;
+                        address = channel.receive(dataBuffer);
+
+                        if (address != null &amp;&amp; dataBuffer.hasRemaining()) &#123;
+                            byte [] array = new byte[dataBuffer.position()];
+                            dataBuffer.flip();
+                            dataBuffer.get(array);
+                            dataBuffer.clear();
+                            log.info(&quot;reveive:&#123;&#125;&quot;, new String(array));
+                        &#125;
+                    &#125; catch (IOException e) &#123;
+                        log.error(&quot;receive failed&quot;, e);
+                    &#125;
+                &#125;
+            &#125;
+        &#125;).start();
+
+        Scanner scanner = new Scanner(System.in);
+        while (true) &#123;
+            String inputData =  scanner.nextLine();
+            if (inputData.length() &gt; 10) &#123;
+                log.error(&quot;too long&quot;);
+                continue;
+            &#125;
+            ByteBuffer dataBuffer = ByteBuffer.allocate(15);
+            dataBuffer.put(inputData.getBytes());
+            dataBuffer.flip();
+            try &#123;
+                channel.send(dataBuffer, new InetSocketAddress(&quot;localhost&quot;, 8080));
+            &#125; catch (IOException e) &#123;
+                log.error(&quot;send failed&quot;, e);
+            &#125;
+        &#125;
+    &#125;
+
+    public static void main(String args[]) throws IOException, InterruptedException &#123;
+        UdpClient client = new UdpClient();
+        client.run();
+        client.join();
+    &#125;
+&#125;
+</code></pre>
+<h3 id="ServerSocketChannel"><a href="#ServerSocketChannel" class="headerlink" title="ServerSocketChannel"></a>ServerSocketChannel</h3><p>ServerSocketChannel用于TCP连接的服务器端。常用的API如下所示：</p>
+<ul>
+<li>打开Channel、关闭Channel</li>
+</ul>
+<pre><code class="java">ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
+serverSocketChannel.close();
+</code></pre>
+<ul>
+<li>绑定监听地址端口</li>
+</ul>
+<pre><code class="java">serverSocketChannel.socket().bind(new InetSocketAddress(8080));
+</code></pre>
+<ul>
+<li>等待客户度连接</li>
+</ul>
+<pre><code class="java">SocketChannel clientChannel = serverSocketChannel.accept();
+</code></pre>
+<ul>
+<li>指定阻塞或非阻塞</li>
+</ul>
+<pre><code class="java">serverSocketChannel.configureBlocking(false);
+</code></pre>
+<p>ServerSocketChannel初始化后默认是阻塞模式。比方说在阻塞模式下调用accept()方法后会阻塞进程等待直到有新的客户端连接到来，而在非阻塞模式下调用accept()方法不会发生阻塞而立即返回客户端socket（没有客户端连接时候返回null）。</p>
+<ul>
+<li>将channel注册到selector中</li>
+</ul>
+<pre><code class="java">serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
+</code></pre>
+<p>Selector是NIO里核心组件，下一个章节将会详细介绍。当channel处于非阻塞模式，可以被注册到Selector中，由Selector代理接收所有的IO事件。</p>
+<h3 id="SocketChannel"><a href="#SocketChannel" class="headerlink" title="SocketChannel"></a>SocketChannel</h3><p>与ServerSocketChannel对应，SocketChannel适用于TCP连接的客户端。常用API如下：</p>
+<ul>
+<li>打开关闭Channel</li>
+</ul>
+<pre><code class="java">SocketChannel sc = SocketChannel.open();
+sc.close();
+</code></pre>
+<ul>
+<li>连接服务器</li>
+</ul>
+<pre><code class="java">sc.connect(new InetSocketAddress(&quot;localhost&quot;, 8080));
+</code></pre>
+<ul>
+<li>指定阻塞或非阻塞</li>
+</ul>
+<pre><code class="java">sc.configureBlocking(false);
+</code></pre>
+<ul>
+<li>注册到Selector</li>
+</ul>
+<pre><code class="java">sc.register(selector, SelectionKey.OP_CONNECT);
+</code></pre>
+<ul>
+<li>读写数据</li>
+</ul>
+<pre><code>sc.write(writeBuffer);
+sc.read(readBuffer);
+</code></pre>
+<h2 id="Selector"><a href="#Selector" class="headerlink" title="Selector"></a>Selector</h2><p>Selector是NIO实现IO多路复用模型的重要组件。多个Channel可以被注册到同一个Selector上，然后Selector会不断的轮询注册在它上面的Channel。一旦某个Channel有了新的IO事件就会被筛选出来进一步处理。因此，只需要一个线程负责Selector的轮询，就能够支撑大量的连接，从而能够支撑高并发服务的开发。基于Selector实现的IO多路复用模型示意图如下：</p>
+<p><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2F%E4%BA%86%E8%A7%A3Java%20NIO%2FIO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E6%A8%A1%E5%9E%8B.png" alt="IO多路复用模型.png"></p>
+<h3 id="KQueueSelectorImpl"><a href="#KQueueSelectorImpl" class="headerlink" title="KQueueSelectorImpl"></a>KQueueSelectorImpl</h3><p>在MacOS下，Selector的默认实现是KQueueSelectorImpl，可以在JDK8源码下找到：openjdk-jdk8u-jdk8u&#x2F;jdk&#x2F;src&#x2F;macosx&#x2F;classes&#x2F;sun&#x2F;nio&#x2F;ch&#x2F;KQueueSelectorImpl.java</p>
+<p>KQueueSelectorImpl继承关系如下：<br><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2F%E4%BA%86%E8%A7%A3Java%20NIO%2FKQueueSelectorImpl.jpg" alt="KQueueSelectorImpl.jpg"></p>
+<p>而在Linux 2.6+内核下，Selector的默认实现是是EPollSelectorImpl，源码在中：openjdk-jdk8u-jdk8u&#x2F;jdk&#x2F;src&#x2F;solaris&#x2F;classes&#x2F;sun&#x2F;nio&#x2F;ch&#x2F;EPollSelectorImpl.java</p>
+<p>我们从父类SelectorImpl里可以看到两个字段：</p>
+<pre><code class="java">    // The set of keys with data ready for an operation
+    protected Set&lt;SelectionKey&gt; selectedKeys;
+
+    // The set of keys registered with this Selector
+    protected HashSet&lt;SelectionKey&gt; keys;
+</code></pre>
+<p>selectedKeys保存的是有新IO事件等待处理的Key；而keys保存的是所有的被注册到该Selector的key。</p>
+<h3 id="SelectionKey"><a href="#SelectionKey" class="headerlink" title="SelectionKey"></a>SelectionKey</h3><p>上文提到SelectionKey，这究竟为何物，我们一起来探讨下。先看看常用的API：</p>
+<ul>
+<li><strong>public final Object attachment()</strong> 获取该SelectionKey的附加物。attachment常常用来附加数据。</li>
+<li><strong>public abstract int interestOps()</strong> 获取感兴趣事件集合。Channel在注册时候可以指定感兴趣的事件。这里返回int，因为用位来表示事件。</li>
+<li><strong>public abstract int readyOps()</strong> 获取已经就绪的事件集合。这里返回int，因为用位来表示事件。</li>
+<li><strong>public abstract SelectableChannel channel()</strong> 返回该key关联的channel实例。</li>
+<li><strong>public abstract Selector selector()</strong> 返回该key关联的Selector</li>
+<li><strong>public final boolean isAcceptable()</strong> 检查OP_ACCEPT事件是否就绪。如果就绪，表示有新的stocket连接。</li>
+<li><strong>public final boolean isConnectable()</strong> 检查OP_CONNECT事件是否就绪。如果就绪，表示可以发起连接到服务器。</li>
+<li><strong>public final boolean isReadable()</strong> 检查OP_READ事件是否就绪，如果就绪则表示可以开始读取socket中的数据。</li>
+<li><strong>public final boolean isWritable()</strong> 检查OP_WRITE事件是否就绪，如果就绪，表示可以写数据到Channel中。</li>
+</ul>
+<p>从上可以看到，SelectionKey其实是将channel实例和Selector关联起来，并且包含了就绪事件集合以及附加物的一个数据结构。</p>
+<h3 id="将Channel注册到Selector"><a href="#将Channel注册到Selector" class="headerlink" title="将Channel注册到Selector"></a>将Channel注册到Selector</h3><p>实现了SelectableChannel的实例可以调用register方法进行注册。</p>
+<pre><code class="java">SelectionKey selectionKey = socketChannel.register(selector, SelectionKey.OP_WRITE);
+</code></pre>
+<p>从register调试，就到了AbstractSelectableChannel的register方法：</p>
+<pre><code class="java">public final SelectionKey register(Selector sel, int ops,
+                                       Object att)
+        throws ClosedChannelException
+    &#123;
+        synchronized (regLock) &#123;
+            if (!isOpen())
+                throw new ClosedChannelException();
+            if ((ops &amp; ~validOps()) != 0)
+                throw new IllegalArgumentException();
+            // 如果是阻塞型Channel，则抛异常终止。
+            // 所以需要调用configureBlocking(false)，标记为非阻塞Channel
+            if (blocking)
+                throw new IllegalBlockingModeException();
+            // 从缓存中加锁获取与该Selector对应的SelectionKey
+            SelectionKey k = findKey(sel);
+            if (k != null) &#123;
+                // 将入参指定的事件ops记录到interestOps中去。
+                k.interestOps(ops);
+                // 更新附加物，这里默认为null
+                k.attach(att);
+            &#125;
+            // 如果SelectionKey不存在，则调用Selector的register方法来注册。
+            if (k == null) &#123;
+                // New registration
+                synchronized (keyLock) &#123;
+                    if (!isOpen())
+                        throw new ClosedChannelException();
+                    k = ((AbstractSelector)sel).register(this, ops, att);
+                    addKey(k);
+                &#125;
+            &#125;
+            return k;
+        &#125;
+    &#125;
+</code></pre>
+<p>注册步骤总结：</p>
+<ul>
+<li><ol>
+<li>实现了SelectableChannel的实例调用register方法，入参需要指定Selector和注册事件，也可以指定附加物；</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>在SelectableChannel的register方法中，先加锁去缓存中找有没有Selector对应的SelectionKey</li>
+</ol>
+<ul>
+<li>2.1 如果有，就直接通过缓存的key来更新注册时间以及附加物。（因为这两个字段都是volatile，能确保可见性)。</li>
+<li>2.2 如果没有，则通过Selector的register方法来注册事件，并返回新建的key。</li>
+</ul>
+</li>
+</ul>
+<h3 id="Selector使用样例"><a href="#Selector使用样例" class="headerlink" title="Selector使用样例"></a>Selector使用样例</h3><h4 id="Sever端"><a href="#Sever端" class="headerlink" title="Sever端"></a>Sever端</h4><pre><code class="java">
+public class NioEchoServer &#123;
+    private ByteBuffer writeBuffer = ByteBuffer.allocate(1024);
+    private ByteBuffer readBuffer = ByteBuffer.allocate(1024);
+
+    private static final int BUF_SIZE = 256;
+    private static final int TIMEOUT = 10000;
+
+    public void start() throws Exception &#123;
+        // 打开服务端 Socket
+        ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
+        
+        // 打开 Selector
+        Selector selector = Selector.open();
+
+        // 服务端 Socket 监听8080端口, 并配置为非阻塞模式
+        serverSocketChannel.socket().bind(new InetSocketAddress(8080));
+        serverSocketChannel.configureBlocking(false);
+
+        // 将 channel 注册到 selector 中.
+        // 通常我们都是先注册一个 OP_ACCEPT 事件, 然后在 OP_ACCEPT 到来时, 再将这个 Channel 的 OP_READ
+        // 注册到 Selector 中.
+        serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
+
+        Scanner scanner = new Scanner(System.in);
+
+
+        while (true) &#123;
+            // 通过调用 select 方法, 阻塞地等待 channel I/O 可操作
+            if (selector.select(TIMEOUT) == 0) &#123;
+                System.out.println(&quot;.&quot;);
+                continue;
+            &#125;
+
+            // 获取 I/O 操作就绪的 SelectionKey, 通过 SelectionKey 可以知道哪些 Channel 的哪类 I/O 操作已经就绪.
+            Iterator&lt;SelectionKey&gt; keyIterator = selector.selectedKeys().iterator();
+
+            while (keyIterator.hasNext()) &#123;
+
+                SelectionKey key = keyIterator.next();
+
+                // 当获取一个 SelectionKey 后, 就要将它删除, 表示我们已经对这个 IO 事件进行了处理.
+                keyIterator.remove();
+
+                if (key.isAcceptable()) &#123;
+                    System.out.println(&quot;new client connected...&quot;);
+                    // 当 OP_ACCEPT 事件到来时, 我们就有从 ServerSocketChannel 中获取一个 SocketChannel,
+                    // 代表客户端的连接
+                    // 注意, 在 OP_ACCEPT 事件中, 从 key.channel() 返回的 Channel 是 ServerSocketChannel.
+                    // 而在 OP_WRITE 和 OP_READ 中, 从 key.channel() 返回的是 SocketChannel.
+                    SocketChannel clientChannel = ((ServerSocketChannel) key.channel()).accept();
+                    clientChannel.configureBlocking(false);
+                    //在 OP_ACCEPT 到来时, 再将这个 Channel 的 OP_READ 注册到 Selector 中.
+                    // 注意, 这里我们如果没有设置 OP_READ 的话, 即 interest set 仍然是 OP_CONNECT 的话, 那么 select 方法会一直直接返回.
+                    clientChannel.register(key.selector(), OP_READ, ByteBuffer.allocate(BUF_SIZE));
+                &#125;
+
+                if (key.isReadable()) &#123;
+                    SocketChannel clientChannel = (SocketChannel) key.channel();
+                    readBuffer = (ByteBuffer) key.attachment();
+                    int bytesRead = clientChannel.read(readBuffer);
+                    if (bytesRead == -1) &#123;
+                        clientChannel.close();
+                    &#125; else if (bytesRead &gt; 0) &#123;
+                        key.interestOps(OP_READ | SelectionKey.OP_WRITE);
+                        System.out.println(&quot;receive:&quot; + new String(readBuffer.array(), 0, bytesRead));
+                    &#125;
+                &#125;
+
+                if (key.isValid() &amp;&amp; key.isWritable()) &#123;
+                    System.out.print(&quot;send:&quot;);
+                    String input = scanner.nextLine();
+
+                    writeBuffer.clear();
+                    writeBuffer.put(input.getBytes());
+                    //将缓冲区各标志复位,因为向里面put了数据标志被改变要想从中读取数据发向服务器,就要复位
+                    writeBuffer.flip();
+                    SocketChannel clientChannel = (SocketChannel) key.channel();
+                    clientChannel.write(writeBuffer);
+
+                    if (!writeBuffer.hasRemaining()) &#123;
+                        key.interestOps(OP_READ);
+                    &#125;
+                    writeBuffer.compact();
+                &#125;
+            &#125;
+        &#125;
+    &#125;
+
+    public static void main(String args[]) throws Exception &#123;
+        new NioEchoServer().start();
+    &#125;
+&#125;
+</code></pre>
+<h3 id="Client端"><a href="#Client端" class="headerlink" title="Client端"></a>Client端</h3><pre><code class="java">public class NioEchoClient &#123;
+
+    private static ByteBuffer writeBuffer = ByteBuffer.allocate(1024);
+    private static ByteBuffer readBuffer = ByteBuffer.allocate(1024);
+
+    private static final int TIMEOUT = 10000;
+
+    public static void main(String[] args) throws IOException &#123;
+        // 打开socket通道
+        SocketChannel sc = SocketChannel.open();
+        // 设置为非阻塞
+        sc.configureBlocking(false);
+        // 连接服务器
+        sc.connect(new InetSocketAddress(&quot;localhost&quot;, 8080));
+        // 打开选择器
+        Selector selector = Selector.open();
+        // 注册连接服务器
+        sc.register(selector, SelectionKey.OP_CONNECT);
+
+        Scanner scanner = new Scanner(System.in);
+
+        while (true) &#123;
+            while (selector.select(TIMEOUT) == 0) &#123;
+                System.out.println(&quot;.&quot;);
+                continue;
+            &#125;
+
+            //返回此选择器的已选择键集。
+            Set&lt;SelectionKey&gt; keys = selector.selectedKeys();
+            Iterator&lt;SelectionKey&gt; keyIterator = keys.iterator();
+            while (keyIterator.hasNext()) &#123;
+                SelectionKey key = keyIterator.next();
+                keyIterator.remove();
+                // 判断此通道上是否正在进行连接操作。
+                if (key.isConnectable()) &#123;
+                    sc.finishConnect();
+                    sc.register(selector, SelectionKey.OP_WRITE);
+                    System.out.println(&quot;server connected...&quot;);
+                    break;
+                &#125; else if (key.isWritable()) &#123;
+                    System.out.print(&quot;send:&quot;);
+                    String message = scanner.nextLine();
+
+                    writeBuffer.clear();
+                    writeBuffer.put(message.getBytes());
+                    //将缓冲区各标志复位,因为向里面put了数据标志被改变要想从中读取数据发向服务器,就要复位
+                    writeBuffer.flip();
+                    sc.write(writeBuffer);
+
+                    //注册写操作,每个chanel只能注册一个操作，最后注册的一个生效
+                    //如果你对不止一种事件感兴趣，那么可以用“位或”操作符将常量连接起来
+                    //int interestSet = SelectionKey.OP_READ | SelectionKey.OP_WRITE;
+                    //使用interest集合
+                    sc.register(selector, SelectionKey.OP_READ);
+                    sc.register(selector, SelectionKey.OP_WRITE);
+                    sc.register(selector, SelectionKey.OP_READ);
+
+                &#125; else if (key.isReadable()) &#123;
+                    SocketChannel client = (SocketChannel) key.channel();
+                    //将缓冲区清空以备下次读取
+                    readBuffer.clear();
+                    int num = client.read(readBuffer);
+                    System.out.println(&quot;receive:&quot; + new String(readBuffer.array(), 0, num));
+                    //注册读操作，下一次读取
+                    sc.register(selector, SelectionKey.OP_WRITE);
+                &#125;
+            &#125;
+        &#125;
+
+    &#125;
+&#125;
+</code></pre>
+<ul>
+<li><strong>参考资料</strong></li>
+<li><a target="_blank" rel="noopener" href="http://tutorials.jenkov.com/java-nio/index.html"><strong>Java NIO Tutorial</strong></a> 很好的NIO教程，比国内的大部分资料都齐全。</li>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/crazymakercircle/p/10225159.html"><strong>10分钟看懂， Java NIO 底层原理</strong></a> 将Java四大IO模型讲得通俗易懂透彻的文章。</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2020/05/14/%E8%AE%A4%E8%AF%86Java-NIO/" data-id="cltba3omz002r18r1hm2w1wz7" data-title="认识 Java NIO" class="article-share-link"><span class="fa fa-share">Teilen</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/NIO/" rel="tag">NIO</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/06/12/Java%E9%AB%98%E6%80%A7%E8%83%BD%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B-Reactor%E6%A8%A1%E5%9E%8B/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Neuer</strong>
+      <div class="article-nav-title">
+        
+          Java高性能网络编程--Reactor模型
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/02/11/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98-1-Java%E8%BF%9B%E7%A8%8BCPU%E5%8D%A0%E7%94%A8%E8%BF%87%E9%AB%98/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Älter</strong>
+      <div class="article-nav-title">生产问题(1) Java进程CPU占用过高</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Kategorien</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JAVA/">JAVA</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Java/">Java</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Spring/">Spring</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%80%BB%E7%BB%93/">总结</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/">读书笔记</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/CAS%E5%8E%9F%E7%90%86/" rel="tag">CAS原理</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/IO/" rel="tag">IO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/" rel="tag">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/" rel="tag">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/" rel="tag">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NIO/" rel="tag">NIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/" rel="tag">Netty</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Reactor/" rel="tag">Reactor</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spring/" rel="tag">Spring</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BB%A3%E7%A0%81%E6%95%B4%E6%B4%81%E4%B9%8B%E9%81%93/" rel="tag">代码整洁之道</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8/" rel="tag">垃圾回收器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/" rel="tag">垃圾收集器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/" rel="tag">性能分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6/" rel="tag">文件描述符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag">源码分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98/" rel="tag">生产问题</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%9C%BA%E5%88%B6/" rel="tag">类加载机制</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" rel="tag">线程池</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" rel="tag">读书笔记</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%BE%93%E5%85%A5%E8%BE%93%E5%87%BA%E6%B5%81/" rel="tag">输入输出流</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/CAS%E5%8E%9F%E7%90%86/" style="font-size: 10px;">CAS原理</a> <a href="/tags/IO/" style="font-size: 10px;">IO</a> <a href="/tags/JVM/" style="font-size: 18.33px;">JVM</a> <a href="/tags/Java/" style="font-size: 16.67px;">Java</a> <a href="/tags/MySQL/" style="font-size: 15px;">MySQL</a> <a href="/tags/NIO/" style="font-size: 11.67px;">NIO</a> <a href="/tags/Netty/" style="font-size: 13.33px;">Netty</a> <a href="/tags/Reactor/" style="font-size: 10px;">Reactor</a> <a href="/tags/Spring/" style="font-size: 16.67px;">Spring</a> <a href="/tags/%E4%BB%A3%E7%A0%81%E6%95%B4%E6%B4%81%E4%B9%8B%E9%81%93/" style="font-size: 10px;">代码整洁之道</a> <a href="/tags/%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8/" style="font-size: 13.33px;">垃圾回收器</a> <a href="/tags/%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/" style="font-size: 10px;">垃圾收集器</a> <a href="/tags/%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/" style="font-size: 10px;">性能分析</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="font-size: 15px;">数据库</a> <a href="/tags/%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6/" style="font-size: 10px;">文件描述符</a> <a href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" style="font-size: 20px;">源码分析</a> <a href="/tags/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98/" style="font-size: 13.33px;">生产问题</a> <a href="/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%9C%BA%E5%88%B6/" style="font-size: 10px;">类加载机制</a> <a href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" style="font-size: 10px;">线程池</a> <a href="/tags/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" style="font-size: 10px;">读书笔记</a> <a href="/tags/%E8%BE%93%E5%85%A5%E8%BE%93%E5%87%BA%E6%B5%81/" style="font-size: 10px;">输入输出流</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archiv</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/04/">April 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/02/">February 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2021/01/">January 2021</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/12/">December 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/11/">November 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/10/">October 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">August 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">July 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">June 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/05/">May 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/02/">February 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">January 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">October 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">July 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/08/">August 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/06/">June 2017</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">letzter Beitrag</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2021/04/08/Java-%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%8E%9F%E7%90%86-6-ZGC-%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/">Java 虚拟机原理 (六) ZGC 垃圾收集器</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/09/%E7%94%9F%E4%BA%A7%E9%97%AE%E9%A2%98-3-%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E6%B5%B7%E6%81%A9%E6%B3%95%E5%88%99/">生产问题(3) 应用开发过程中的海恩法则</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/07/%E6%B7%B1%E5%85%A5-MySQL-6-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/">深入 MySQL (六) 常见问题汇总</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/06/%E6%B7%B1%E5%85%A5-MySQL-5-%E9%94%81/">深入 MySQL (五) 锁</a>
+          </li>
+        
+          <li>
+            <a href="/2021/02/05/%E6%B7%B1%E5%85%A5-MySQL-4-%E7%B4%A2%E5%BC%95/">深入 MySQL (四) 索引</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2024 <br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
