@@ -6,17 +6,16 @@
   <meta name="keywords" content=" ES ">
   <meta name="description" content="ES学习2-索引管理 | 湾区极客">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta name="description" content="索引(Index)类似于MySQL里的数据库（database）或者表（table）概念。不同于MySQL需要提前建表，ES其实支持在插入数据的时候自动建立默认索引。当然，ES 也支持自定义索引的属性以及结构。 新建索引在Kibana管理页面，我们可以通过REST APIs快速创建一个索引： PUT &#x2F;my-index-000001  也可以在创建时候指定索引的属性。比如：指定分片数为3，副本数为">
-<meta property="og:type" content="article">
-<meta property="og:title" content="ES学习2-索引管理">
-<meta property="og:url" content="https://bayareageek.cn/2024/05/22/ES%E5%AD%A6%E4%B9%A02-%E7%B4%A2%E5%BC%95%E7%AE%A1%E7%90%86/index.html">
+<meta name="description" content="湾区极客——大湾区技术极客聚集地">
+<meta property="og:type" content="website">
+<meta property="og:title" content="about">
+<meta property="og:url" content="https://bayareageek.cn/about/index.html">
 <meta property="og:site_name" content="湾区极客">
-<meta property="og:description" content="索引(Index)类似于MySQL里的数据库（database）或者表（table）概念。不同于MySQL需要提前建表，ES其实支持在插入数据的时候自动建立默认索引。当然，ES 也支持自定义索引的属性以及结构。 新建索引在Kibana管理页面，我们可以通过REST APIs快速创建一个索引： PUT &#x2F;my-index-000001  也可以在创建时候指定索引的属性。比如：指定分片数为3，副本数为">
+<meta property="og:description" content="湾区极客——大湾区技术极客聚集地">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2024-05-22T00:28:20.000Z">
-<meta property="article:modified_time" content="2024-05-22T00:42:03.711Z">
+<meta property="article:published_time" content="2024-03-02T10:14:39.000Z">
+<meta property="article:modified_time" content="2024-03-02T10:15:55.401Z">
 <meta property="article:author" content="湾区极客">
-<meta property="article:tag" content="ES">
 <meta name="twitter:card" content="summary">
 
 
@@ -280,7 +279,7 @@
     </div>
 </div>
 <input type="hidden" id="yelog_site_posts_number" value="35">
-<input type="hidden" id="yelog_site_word_count" value="91.7k">
+<input type="hidden" id="yelog_site_word_count" value="92k">
 <div style="display: none">
     <span id="busuanzi_value_site_uv"></span>
     <span id="busuanzi_value_site_pv"></span>
@@ -437,10 +436,10 @@
         
         
         <a  class="全部文章 ES "
-           href="/2024/05/12/ES%E5%AD%A6%E4%B9%A01-%E5%88%9D%E5%A7%8B/"
+           href="/2024/05/12/ES%E5%AD%A6%E4%B9%A01-%E8%AE%A4%E8%AF%86/"
            data-tag="搜索,ES"
            data-author="" >
-            <span class="post-title" title="ES学习1-初始">ES学习1-初始</span>
+            <span class="post-title" title="ES学习1-认识">ES学习1-认识</span>
             <span class="post-date" title="2024-05-12 15:54:55">2024/05/12</span>
         </a>
         
@@ -786,12 +785,12 @@
     </div>
     <div class="article-meta">
         
-            发布时间 : <time class="date" title='最后更新: 2024-05-22 08:42:03'>2024-05-22 08:28</time>
+            发布时间 : <time class="date" title='最后更新: 2024-06-04 08:14:54'>2024-05-22 08:28</time>
         
     </div>
     <div class="article-meta">
         
-        <span>字数:177</span>
+        <span>字数:490</span>
         
         
         <span id="busuanzi_container_page_pv">
@@ -821,7 +820,7 @@
     
     <div class="toc-ref">
     
-        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%B0%E5%BB%BA%E7%B4%A2%E5%BC%95"><span class="toc-text">新建索引</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-text">参考资料</span></a></li></ol>
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%B0%E5%BB%BA%E7%B4%A2%E5%BC%95"><span class="toc-text">新建索引</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9B%B4%E6%96%B0%E7%B4%A2%E5%BC%95"><span class="toc-text">更新索引</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9B%B4%E6%96%B0%E7%B4%A2%E5%BC%95%E5%B1%9E%E6%80%A7"><span class="toc-text">更新索引属性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9B%B4%E6%96%B0mapping"><span class="toc-text">更新mapping</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-text">参考资料</span></a></li></ol>
     
 <style>
     .left-col .switch-btn,
@@ -839,10 +838,10 @@
       
         <p>索引(Index)类似于MySQL里的数据库（database）或者表（table）概念。不同于MySQL需要提前建表，ES其实支持在插入数据的时候自动建立默认索引。当然，ES 也支持自定义索引的属性以及结构。</p>
 <h2 id="新建索引"><a href="#新建索引" class="headerlink" title="新建索引"></a>新建索引</h2><p>在Kibana管理页面，我们可以通过REST APIs快速创建一个索引：</p>
-<pre><code class="shell">PUT /my-index-000001
+<pre><code class="go">PUT /my-index-000001
 </code></pre>
 <p>也可以在创建时候指定索引的属性。比如：指定分片数为3，副本数为2（默认情况都是1），则有：</p>
-<pre><code class="console">PUT /my-index-000001
+<pre><code class="go">PUT /my-index-000001
 &#123;
   &quot;settings&quot;: &#123;
     &quot;index&quot;: &#123;
@@ -852,7 +851,52 @@
   &#125;
 &#125;
 </code></pre>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p><a target="_blank" rel="noopener" href="https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-create-index.html">https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-create-index.html</a></p>
+<p>更多其他属性可以参考<a target="_blank" rel="noopener" href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html">这里</a>。</p>
+<p>也可以在创建时候使用<a target="_blank" rel="noopener" href="https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html">Mapping</a>指定索引结构里的字段，例如：</p>
+<pre><code class="go">PUT /test
+&#123;
+  &quot;settings&quot;: &#123;
+    &quot;number_of_shards&quot;: 1
+  &#125;,
+  &quot;mappings&quot;: &#123;
+    &quot;properties&quot;: &#123;
+      &quot;field1&quot;: &#123; &quot;type&quot;: &quot;text&quot; &#125;
+    &#125;
+  &#125;
+&#125;
+</code></pre>
+<h2 id="更新索引"><a href="#更新索引" class="headerlink" title="更新索引"></a>更新索引</h2><h3 id="更新索引属性"><a href="#更新索引属性" class="headerlink" title="更新索引属性"></a>更新索引属性</h3><p>创建好索引后，也可以更新该索引的属性（仅限<a target="_blank" rel="noopener" href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#dynamic-index-settings">动态属性</a>）：</p>
+<pre><code class="go">PUT /my-index-000001/_settings
+&#123;
+  &quot;index&quot; : &#123;
+    &quot;number_of_replicas&quot; : 2
+  &#125;
+&#125;
+</code></pre>
+<h3 id="更新mapping"><a href="#更新mapping" class="headerlink" title="更新mapping"></a>更新mapping</h3><p>也可以更新索引的映射信息，比如新增字段或者修改字段设置：</p>
+<pre><code class="go">PUT /my-index-00000/_mapping
+&#123;
+  &quot;properties&quot;: &#123;
+    &quot;title&quot;:  &#123; &quot;type&quot;: &quot;text&quot;&#125;
+  &#125;
+&#125;
+</code></pre>
+<p>还可以为上边的title字段再增加一个内嵌字段subtitle：</p>
+<pre><code class="go">PUT /my-index-00000/_mapping
+&#123;
+  &quot;properties&quot;: &#123;
+    &quot;title&quot;: &#123;
+      &quot;properties&quot;: &#123;
+        &quot;subtitle&quot;: &#123;
+          &quot;type&quot;: &quot;text&quot;
+        &#125;
+      &#125;
+    &#125;
+  &#125;
+&#125;
+</code></pre>
+<p>注意，存量索引里的字段类型是不能修改的。因为修改字段类型会导致其与存量数据类型不匹配。你如果想修改字段类型，唯一办法是新建一个索引，然后使用<a target="_blank" rel="noopener" href="https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-reindex.html">reindex</a>命令将存量数据导入新的索引中。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p><a target="_blank" rel="noopener" href="https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-create-index.html">https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-create-index.html</a><br><a target="_blank" rel="noopener" href="https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-reindex.html">https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-reindex.html</a></p>
 
       
        <hr><span style="font-style: italic;color: gray;"> 转载请注明来源，欢迎对文章中的引用来源进行考证，欢迎指出任何有错误或不够清晰的表达。可以在下面评论区评论，也可以邮件至 duval1024@gmail.com </span>
