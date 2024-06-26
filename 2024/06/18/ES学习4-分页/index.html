@@ -724,19 +724,19 @@
         
         
         <a  class="全部文章 Spring "
-           href="/2018/07/12/Spring%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%902-%E4%B8%8A%E4%B8%8B%E6%96%87%E5%88%B7%E6%96%B0%E8%BF%87%E7%A8%8B/"
+           href="/2018/07/12/Spring%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%901-RESTful%20Web%E5%90%AF%E5%8A%A8%E8%BF%87%E7%A8%8B/"
            data-tag="源码分析,Spring"
            data-author="" >
-            <span class="post-title" title="Spring源码分析2-上下文刷新过程分析">Spring源码分析2-上下文刷新过程分析</span>
+            <span class="post-title" title="Spring源码分析1-RESTfulWeb启动过程">Spring源码分析1-RESTfulWeb启动过程</span>
             <span class="post-date" title="2018-07-12 11:47:01">2018/07/12</span>
         </a>
         
         
         <a  class="全部文章 Spring "
-           href="/2018/07/12/Spring%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%901-RESTful%20Web%E5%90%AF%E5%8A%A8%E8%BF%87%E7%A8%8B/"
+           href="/2018/07/12/Spring%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%902-%E4%B8%8A%E4%B8%8B%E6%96%87%E5%88%B7%E6%96%B0%E8%BF%87%E7%A8%8B/"
            data-tag="源码分析,Spring"
            data-author="" >
-            <span class="post-title" title="Spring源码分析1-RESTfulWeb启动过程">Spring源码分析1-RESTfulWeb启动过程</span>
+            <span class="post-title" title="Spring源码分析2-上下文刷新过程分析">Spring源码分析2-上下文刷新过程分析</span>
             <span class="post-date" title="2018-07-12 11:47:01">2018/07/12</span>
         </a>
         
@@ -805,7 +805,7 @@
     </div>
     <div class="article-meta">
         
-            发布时间 : <time class="date" title='最后更新: 2024-06-25 08:54:07'>2024-06-18 08:54</time>
+            发布时间 : <time class="date" title='最后更新: 2024-06-26 08:38:57'>2024-06-18 08:54</time>
         
     </div>
     <div class="article-meta">
@@ -1156,7 +1156,7 @@ GET _search
 &#125;
 </code></pre>
 <p>从上边的例子可以看到，当使用了PIT后，返回结果里的排序值除了包含price，还会多出一个_shard_doc值。例如[100, 2]。这个值是由分片索引和lucene内部文档Id组合而来。ES会确保在该PIT中每一个文档的_shard_doc都是唯一的。另外，你也可以显式指定 {“_shard_doc”: “desc”}来控制返回文档的顺序。</p>
-<h2 id="Scroll"><a href="#Scroll" class="headerlink" title="Scroll"></a>Scroll</h2><p>除了上述两种方法以外，ES还支持Scroll命令分页。Scroll命令可用于非实时地分页检索大量数据。该命令是通过开始执行时构建一个快照以屏蔽掉所有数据变更，从而实现稳定的翻页。但这也决定了使用Scroll命令获取的翻页数据并不是实时的。另外，相较于构建快照，PIT轻量级视图的性能开销要更加小。因此当然在最新的ES版本中，已经建议使用Search After代替Scroll命令。</p>
+<h2 id="Scroll"><a href="#Scroll" class="headerlink" title="Scroll"></a>Scroll</h2><p>除了上述两种方法以外，ES还支持Scroll命令分页。Scroll命令可用于非实时地分页检索大量数据。该命令是通过开始执行时构建一个快照以屏蔽掉所有数据变更，从而实现稳定的翻页。但这也决定了使用Scroll命令获取的翻页数据并不是实时的。另外快照需要保持所有旧数据不被删除，相比之下PIT轻量级视图的性能开销要更加小。因此当然在最新的ES版本中，已经建议使用Search After代替Scroll命令。</p>
 <p>下边简单了解下Scroll命令：</p>
 <pre><code class="sql">-- 首页查询
 POST /books/_search?scroll=5m
