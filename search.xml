@@ -4,6 +4,33 @@
   
     
     <entry>
+      <title>ES深入1-整体结构</title>
+      <link href="/2024/06/18/ES%E6%B7%B1%E5%85%A51-%E6%95%B4%E4%BD%93%E7%BB%93%E6%9E%84/"/>
+      <url>/2024/06/18/ES%E6%B7%B1%E5%85%A51-%E6%95%B4%E4%BD%93%E7%BB%93%E6%9E%84/</url>
+      
+        <content type="html"><![CDATA[<p><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FES%2Fes%E6%9E%B6%E6%9E%84%E8%8D%89%E5%9B%BE.png" alt="es架构草图.png"><br>(base) </p><h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul><li><a href="https://pdai.tech/md/db/nosql-es/elasticsearch-y-th-2.html">https://pdai.tech/md/db/nosql-es/elasticsearch-y-th-2.html</a></li></ul>]]></content>
+      
+      
+      <categories>
+          
+          <category> ES </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 搜索 </tag>
+            
+            <tag> ES </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>ES学习4-分页</title>
       <link href="/2024/06/18/ES%E5%AD%A6%E4%B9%A04-%E5%88%86%E9%A1%B5/"/>
       <url>/2024/06/18/ES%E5%AD%A6%E4%B9%A04-%E5%88%86%E9%A1%B5/</url>
