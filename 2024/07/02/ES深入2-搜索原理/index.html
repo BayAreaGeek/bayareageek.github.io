@@ -2,9 +2,9 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Java 线程池详解 | 湾区极客</title>
-  <meta name="keywords" content=" 线程池 ">
-  <meta name="description" content="Java 线程池详解 | 湾区极客">
+  <title>ES深入2-搜索原理 | 湾区极客</title>
+  <meta name="keywords" content=" ES , 搜索 ">
+  <meta name="description" content="ES深入2-搜索原理 | 湾区极客">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <meta name="description" content="湾区极客——大湾区技术极客聚集地">
 <meta property="og:type" content="website">
@@ -803,9 +803,9 @@
 </aside>
 <div id="post">
     <div class="pjax">
-        <article id="post-Java-线程池详解" class="article article-type-post" itemscope itemprop="blogPost">
+        <article id="post-ES深入2-搜索原理" class="article article-type-post" itemscope itemprop="blogPost">
     
-        <h1 class="article-title">Java 线程池详解</h1>
+        <h1 class="article-title">ES深入2-搜索原理</h1>
     
     <div class="article-meta">
         
@@ -815,7 +815,7 @@
             <i class="iconfont icon-category"></i>
             
             
-            <a  data-rel="Java">Java</a>
+            <a  data-rel="ES">ES</a>
             
         </span>
         
@@ -823,19 +823,21 @@
         <span class="tag">
             <i class="iconfont icon-tag"></i>
             
-            <a class="color4">线程池</a>
+            <a class="color3">ES</a>
+            
+            <a class="color3">搜索</a>
             
         </span>
         
     </div>
     <div class="article-meta">
         
-            发布时间 : <time class="date" title='最后更新: 2024-02-18 21:17:51'>2017-08-10 16:47</time>
+            发布时间 : <time class="date" title='最后更新: 2024-07-02 09:01:21'>2024-07-02 08:26</time>
         
     </div>
     <div class="article-meta">
         
-        <span>字数:2k</span>
+        <span>字数:1.5k</span>
         
         
         <span id="busuanzi_container_page_pv">
@@ -865,7 +867,7 @@
     
     <div class="toc-ref">
     
-        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Java-%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="toc-text">Java 线程池</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ExecutorService-%E6%8E%A5%E5%8F%A3"><span class="toc-text">ExecutorService 接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ThreadPoolExecutor"><span class="toc-text">ThreadPoolExecutor</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Executors"><span class="toc-text">Executors</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Executors-newCachedThreadPool"><span class="toc-text">Executors.newCachedThreadPool</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Executors-newFixedThreadPool"><span class="toc-text">Executors.newFixedThreadPool</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Executors-newSingleThreadExecutor"><span class="toc-text">Executors.newSingleThreadExecutor</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Executors-newScheduledThreadPool"><span class="toc-text">Executors.newScheduledThreadPool</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Callable-Future"><span class="toc-text">Callable  &amp;&amp; Future</span></a></li></ol></li></ol>
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%80%92%E6%8E%92%E7%B4%A2%E5%BC%95"><span class="toc-text">倒排索引</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86"><span class="toc-text">原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B7%E4%BE%8B"><span class="toc-text">样例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BA%94%E7%94%A8"><span class="toc-text">应用</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%86%E8%AF%8D%E4%B8%8E%E6%A0%87%E5%87%86%E5%8C%96"><span class="toc-text">分词与标准化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%86%E8%AF%8D"><span class="toc-text">分词</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%87%E5%87%86%E5%8C%96"><span class="toc-text">标准化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B"><span class="toc-text">示例</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ES%E5%88%86%E6%9E%90%E5%99%A8%EF%BC%88Analyzer%EF%BC%89"><span class="toc-text">ES分析器（Analyzer）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-text">参考资料</span></a></li></ol>
     
 <style>
     .left-col .switch-btn,
@@ -881,181 +883,80 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <h2 id="Java-线程池"><a href="#Java-线程池" class="headerlink" title="Java 线程池"></a>Java 线程池</h2><p>Java 线程池模型的关键几个类和接口包括：Executor，Executors，ExecutorService，ThreadPoolExecutor，Future，Callable </p>
-<span id="more"></span>
-
-<h3 id="ExecutorService-接口"><a href="#ExecutorService-接口" class="headerlink" title="ExecutorService 接口"></a>ExecutorService 接口</h3><p>&emsp;&emsp; 所有的线程池实现类都继承于ExecutorService  接口，包括ThreadPoolExecutor。在使用线程池的时候，其实也是通过这个接口动态绑定各个线程池实例进行调用，常用的接口方法包括：</p>
-<pre><code>void execute(Runnable command);
-&lt;T&gt; Future&lt;T&gt; submit(Callable&lt;T&gt; task);
-void shutdown();
-boolean awaitTermination(long timeout, TimeUnit unit)
-</code></pre>
-<h3 id="ThreadPoolExecutor"><a href="#ThreadPoolExecutor" class="headerlink" title="ThreadPoolExecutor"></a>ThreadPoolExecutor</h3><p>这个类是各种线程池类的<em>爸爸</em>或<em>干爹</em>,所有的常见的线程池类都是从他派生出来。怎么派生的呢？我们来看下他的构造方法：</p>
-<pre><code class="java">public ThreadPoolExecutor(int corePoolSize,
-                              int maximumPoolSize,
-                              long keepAliveTime,
-                              TimeUnit unit,
-                              BlockingQueue&lt;Runnable&gt; workQueue)
-</code></pre>
-<p>这里我们只看这个五个参数的构造方法（还有个6参数方法）：</p>
-<p><strong>corePoolSize</strong> 核心线程数量，包含空闲线程<br><strong>maximumPoolSize</strong> 最大线程数量<br><strong>keepAliveTime</strong> 空闲的线程存活时间<br><strong>unit</strong>  时间单位<br><strong>workQueue</strong> 线程缓存队列，仅保存 execute方法提交的线程</p>
-<p>详细的含义直接摘抄别人的总结：根据 ThreadPoolExecutor 源码前面大段的注释，我们可以看出，当试图通过 excute 方法讲一个 Runnable 任务添加到线程池中时，按照如下顺序来处理：</p>
-<p>如果线程池中的线程数量少于 corePoolSize，即使线程池中有空闲线程，也会创建一个新的线程来执行新添加的任务；</p>
-<p>如果线程池中的线程数量大于等于 corePoolSize，但缓冲队列 workQueue 未满，则将新添加的任务放到 workQueue 中，按照 FIFO 的原则依次等待执行（线程池中有线程空闲出来后依次将缓冲队列中的任务交付给空闲的线程执行）；</p>
-<p>如果线程池中的线程数量大于等于 corePoolSize，且缓冲队列 workQueue 已满，但线程池中的线程数量小于 maximumPoolSize，则会创建新的线程来处理被添加的任务；</p>
-<p>如果线程池中的线程数量等于了 maximumPoolSize，有 4 种才处理方式（该构造方法调用了含有 6 个参数的构造方法，并将最后一个构造方法为 RejectedExecutionHandler 类型，它在处理线程溢出时有 4 种方式，这里不再细说，要了解的，自己可以阅读下源码）。</p>
-<p><strong>总结起来，也即是说，当有新的任务要处理时，先看线程池中的线程数量是否大于 corePoolSize，再看缓冲队列 workQueue 是否满，最后看线程池中的线程数量是否大于 maximumPoolSize。</strong></p>
-<h3 id="Executors"><a href="#Executors" class="headerlink" title="Executors"></a>Executors</h3><p>Executors是一个工厂类，里边给我们提供了几个线程池的工厂方法，例如：</p>
-<pre><code class="java">public static ExecutorService newCachedThreadPool() &#123;
-        return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
-                                      60L, TimeUnit.SECONDS,
-                                      new SynchronousQueue&lt;Runnable&gt;());
-&#125;
-
-public static ExecutorService newFixedThreadPool(int nThreads) &#123;
-        return new ThreadPoolExecutor(nThreads, nThreads,
-                                      0L, TimeUnit.MILLISECONDS,
-                                      new LinkedBlockingQueue&lt;Runnable&gt;());
-&#125;
-    
-public static ExecutorService newSingleThreadExecutor() &#123;
-        return new FinalizableDelegatedExecutorService
-            (new ThreadPoolExecutor(1, 1,
-                                    0L, TimeUnit.MILLISECONDS,
-                                    new LinkedBlockingQueue&lt;Runnable&gt;()));
-&#125;
-
-public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize) &#123;
-        return new ScheduledThreadPoolExecutor(corePoolSize);
-&#125;
-
-.........以下略掉N个方法.........
-</code></pre>
-<h4 id="Executors-newCachedThreadPool"><a href="#Executors-newCachedThreadPool" class="headerlink" title="Executors.newCachedThreadPool"></a>Executors.newCachedThreadPool</h4><p>立马看下这个方法的调用的是哪个构造函数：</p>
-<pre><code class="java">new ThreadPoolExecutor(0, Integer.MAX_VALUE,
-                                      60L, TimeUnit.SECONDS,
-                                      new SynchronousQueue&lt;Runnable&gt;());
-</code></pre>
-<p>可以看到，核心线程数为0，空闲线程存活时长是60s，就是说一旦某个线程空闲下来超过60秒，他就会从池中拿掉。另外SynchronousQueue 是一个不缓存元素的队列，一旦有Runnable 通过execute提交进来，他立即传递给线程池去寻找空闲线程去执行，如果没有空闲线程，则新建一个。</p>
-<p>像下边这段测试代码，因为每隔21秒才提交一个sleep20 秒的runnable，所以，线程池中的唯一个线程不断地被得到复用。</p>
-<pre><code class="java">public class ExecutorTest &#123;
-
-    private static ExecutorService service;
-
-    static class SleepTask extends Thread &#123;
-        @Override
-        public void run() &#123;
-            try &#123;
-                Thread.sleep(20000);
-            &#125; catch (InterruptedException e) &#123;                
-            &#125;
-            System.out.println(Thread.currentThread().getName() + &quot; sleep 20 s &quot;);
-        &#125;
-    &#125;
-
-
-    public static void main(String[] args) throws InterruptedException &#123;
-        service = Executors.newCachedThreadPool();
-        for (int i = 0; i &lt; 10; i++) &#123;
-            service.execute(new SleepTask());
-            Thread.sleep(21000);
-        &#125;
-         // 这里要使得主线程等待线程池结束
-        service.shutdown();
-        while (!service.awaitTermination(10, TimeUnit.SECONDS)) ;
-    &#125;
-&#125;
-
-输出：
-pool-1-thread-1 sleep 20 s 
-pool-1-thread-1 sleep 20 s 
-pool-1-thread-1 sleep 20 s 
-pool-1-thread-1 sleep 20 s 
-pool-1-thread-1 sleep 20 s 
-pool-1-thread-1 sleep 20 s 
-(以下略)
-</code></pre>
-<h4 id="Executors-newFixedThreadPool"><a href="#Executors-newFixedThreadPool" class="headerlink" title="Executors.newFixedThreadPool"></a>Executors.newFixedThreadPool</h4><p>先看调用的构造方法：</p>
-<pre><code class="java">public static ExecutorService newFixedThreadPool(int nThreads) &#123;
-        return new ThreadPoolExecutor(nThreads, nThreads,
-                                      0L, TimeUnit.MILLISECONDS,
-                                      new LinkedBlockingQueue&lt;Runnable&gt;());
-&#125;
-</code></pre>
-<p>构造方法参数是，corePoolSize &#x3D;&#x3D; maximumPoolSize &#x3D;&#x3D; nThreads，线程空闲时长为0s，队列为无界(Integer.MAX)的先进先出阻塞队列。</p>
-<p>这个意思就是，线程不会被复用，execute提交一个runnable，就新建一个线程去执行他，线程用完就销毁。当线程数量大于 corePoolSize ，就放到队列里缓存起来，知道有空闲的位置让出来。</p>
-<h4 id="Executors-newSingleThreadExecutor"><a href="#Executors-newSingleThreadExecutor" class="headerlink" title="Executors.newSingleThreadExecutor"></a>Executors.newSingleThreadExecutor</h4><p>线程池空间为1，没有空闲时间。这个很简单，略过。跟newFixedThreadPool(1)类似。</p>
-<pre><code class="java">  public static ExecutorService newSingleThreadExecutor() &#123;
-        return new FinalizableDelegatedExecutorService
-            (new ThreadPoolExecutor(1, 1,
-                                    0L, TimeUnit.MILLISECONDS,
-                                    new LinkedBlockingQueue&lt;Runnable&gt;()));
-    &#125;
- 
-</code></pre>
-<h4 id="Executors-newScheduledThreadPool"><a href="#Executors-newScheduledThreadPool" class="headerlink" title="Executors.newScheduledThreadPool"></a>Executors.newScheduledThreadPool</h4><p>这个线程池的使用姿势跟上边略有不同，先看构造方法调用：</p>
-<pre><code class="java">public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize) &#123;
-        return new ScheduledThreadPoolExecutor(corePoolSize);
-&#125;
- //最终调用了这个方法：
-public ScheduledThreadPoolExecutor(int corePoolSize) &#123;
-        super(corePoolSize, Integer.MAX_VALUE, 0, NANOSECONDS,
-              new DelayedWorkQueue());
-&#125;
-</code></pre>
-<p>可以看到，corePoolSize可以指定，maximumPoolSize 无穷大，空闲时间为0，队列使用的支持延时获取元素的无界阻塞队列。在调用的时候，需要使用ScheduledExecutorService 这个接口来动态绑定，才能发挥真正的作用。<br>比如 :<br><strong>scheduleAtFixedRate</strong> 这个方法，允许command 第一次延迟 initialDelay个时间单位才开始执行，第二次延迟initialDelay+period 个时间单位才开始，第三次延迟到initialDelay+period*2 个时间单位才开始。每次增加period 个时间单位。但不允许并发，前一个执行没结束，后继的执行会被推迟。见范例。测试结果表明，每隔5s 左右才会执行一次。</p>
-<pre><code class="java">public ScheduledFuture&lt;?&gt; scheduleAtFixedRate(Runnable command,
-                                                  long initialDelay,
-                                                  long period,
-                                                  TimeUnit unit);
-</code></pre>
-<p><strong>scheduleWithFixedDelay</strong> 这个方法，允许command第一次延迟 initialDelay个时间单位才开始执行，后继的每一次都要在前一次结束后，延迟period个时间单位才开始执行。将范例里的注释行去掉，测试结果符合该描述。</p>
-<p>范例：</p>
-<pre><code class="java">public class ExecutorTest &#123;
-
-    private static ScheduledExecutorService service;
-
-    static class SleepTask extends Thread &#123;
-        @Override
-        public void run() &#123;
-            System.out.println(Thread.currentThread().getName() + &quot; start &quot;);
-            try &#123;
-                Thread.sleep(5000);
-            &#125; catch (InterruptedException e) &#123;
-            &#125;
-            System.out.println(Thread.currentThread().getName() + &quot; finished &quot;);
-        &#125;
-    &#125;
-
-
-    public static void main(String[] args) throws InterruptedException &#123;
-        service = Executors.newScheduledThreadPool(5);
-        service.scheduleAtFixedRate(new SleepTask(), 1, 1, TimeUnit.SECONDS);
-       // service.scheduleWithFixedDelay(new SleepTask(),1,1,TimeUnit.SECONDS);
-    &#125;
-&#125;
-&#125;
-</code></pre>
-<h3 id="Callable-Future"><a href="#Callable-Future" class="headerlink" title="Callable  &amp;&amp; Future"></a>Callable  &amp;&amp; Future</h3><p>&emsp;&emsp;上面都是在讨论用线程池执行Runnable对象，还有另外一个实现了 Callable 接口的对象。实现了 Callable 接口的对象会有返回值，但是Runnable对象返回值为null。并且 Callable 的 call()方法只能通过 ExecutorService 的 submit(Callable task) 方法来执行，并且返回一个 Future，是表示任务等待完成的 Future。<br>&emsp;&emsp;当将一个 Callable 的对象传递给 ExecutorService 的 submit 方法，则该 call 方法自动在一个线程上执行，并且会返回执行结果 Future 对象。同样，将 Runnable 的对象传递给 ExecutorService 的 submit 方法，则该 run 方法自动在一个线程上执行，并且会返回执行结果 Future 对象，但是在该 Future 对象上调用 get 方法，将返回 null。<br>&emsp;&emsp;上范例：</p>
-<pre><code class="java">public class ExecutorTest &#123;
-
-    private static ExecutorService service;
-
-    static class SleepTask implements Callable&lt;String&gt; &#123;
-        @Override
-        public String call() throws Exception &#123;
-            return Thread.currentThread().getName()+&quot; is finished.&quot;;
-        &#125;
-    &#125;
-
-
-    public static void main(String[] args) throws InterruptedException, ExecutionException &#123;
-        service = Executors.newCachedThreadPool();
-        Future&lt;String&gt; future = service.submit(new SleepTask());
-        System.out.println(future.get());
-    &#125;
-&#125;
-</code></pre>
+        <h2 id="倒排索引"><a href="#倒排索引" class="headerlink" title="倒排索引"></a>倒排索引</h2><p>ES底层基于lucene实现，而lucene全文索引使用到的核心技术就是倒排索引。倒排索引（Inverted Index）是一种广泛应用于全文检索系统中的数据结构，如搜索引擎、数据库等。它的主要目的是为了高效地支持关键词搜索，即通过一个关键词快速找到包含该关键词的所有文档。倒排索引的基本原理是将文档中出现的关键词作为索引项，每个索引项记录了该关键词在哪些文档中出现过，以及在这些文档中的具体位置。</p>
+<h3 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h3><ol>
+<li><p><strong>分词处理</strong>：在构建倒排索引前，首先需要对文档进行分词处理，即将文档拆分为单个词汇或短语。这个过程称为分词（Tokenization）。</p>
+</li>
+<li><p><strong>创建索引项</strong>：对于每个词汇，创建一个索引项，该索引项记录了该词汇所出现的所有文档的标识符（通常是文档ID）以及在文档中的位置信息。</p>
+</li>
+<li><p><strong>数据结构</strong>：倒排索引通常使用哈希表、字典树、B树等高效数据结构来存储索引项，以便快速查询。每个关键词对应一个列表或集合，其中包含该词出现的所有文档ID。</p>
+</li>
+</ol>
+<h3 id="样例"><a href="#样例" class="headerlink" title="样例"></a>样例</h3><p>假设我们有两个文档：</p>
+<ul>
+<li>文档1（ID&#x3D;1）：“The quick brown fox jumps over the lazy dog.”</li>
+<li>文档2（ID&#x3D;2）：“A quick brown dog jumps over the fence.”</li>
+</ul>
+<p>经过分词处理，我们得到以下词汇集合：</p>
+<ul>
+<li>“the”, “quick”, “brown”, “fox”, “jumps”, “over”, “lazy”, “dog”, “a”, “fence”</li>
+</ul>
+<p>接下来，构建倒排索引：</p>
+<ul>
+<li>“the”: [1, 2]</li>
+<li>“quick”: [1, 2]</li>
+<li>“brown”: [1, 2]</li>
+<li>“fox”: [1]</li>
+<li>“jumps”: [1, 2]</li>
+<li>“over”: [1, 2]</li>
+<li>“lazy”: [1]</li>
+<li>“dog”: [1, 2]</li>
+<li>“a”: [2]</li>
+<li>“fence”: [2]</li>
+</ul>
+<p>在这个例子中，每个关键词都指向一个文档ID列表，表明了该词出现在哪些文档中。例如，关键词”quick”对应的列表是[1, 2]，意味着”quick”出现在文档1和文档2中。</p>
+<h3 id="应用"><a href="#应用" class="headerlink" title="应用"></a>应用</h3><p>当用户输入查询关键词时，搜索引擎只需直接在倒排索引中查找该关键词，即可立即获取包含该关键词的所有文档ID，从而大大加快了搜索的速度。此外，通过进一步分析这些文档ID集合（如计算交集、并集），搜索引擎还能支持更复杂的查询需求，如布尔查询、短语查询等。</p>
+<h2 id="分词与标准化"><a href="#分词与标准化" class="headerlink" title="分词与标准化"></a>分词与标准化</h2><h3 id="分词"><a href="#分词" class="headerlink" title="分词"></a>分词</h3><p>分词（Tokenization）是将文本数据切分成更小的有意义单位（称为tokens或词元）的过程，这对于全文搜索至关重要。标准化（Normalization）则是将这些词元转换为标准形式，以提高搜索的一致性和准确性。</p>
+<ul>
+<li>比如：可以按照空格分割，将 “the quick brown fox jumps” 切分为[“the”, “quick”, “brown”, “fox”, “jumps”]；</li>
+<li>也可以按照语言的词汇语法分割，将 “一只白色的狐狸跳进草丛” 切分为[“一”, “只”, “白色”, “的”, “狐狸”, “跳进”, “草丛”]</li>
+</ul>
+<h3 id="标准化"><a href="#标准化" class="headerlink" title="标准化"></a>标准化</h3><p>标准化是将分词后的词元转换成统一的格式，以便于比较和匹配。常见的标准化操作包括：</p>
+<ul>
+<li><p><strong>小写转换</strong>：将所有词元转换为小写，确保搜索时大小写不敏感。比如：”Fox”转换为”fox”；</p>
+</li>
+<li><p><strong>词干提取</strong>：通过去除词缀（如复数形式、时态变化等），将词元还原为其词根形式，有助于匹配变体形式的词汇。比如：”foxes” 转换为 “fox”；</p>
+</li>
+<li><p><strong>去除停用词</strong>：从词元流中移除常见但无实际意义的词汇，如“is”、“the”等，以减少噪音并提高搜索效率；</p>
+</li>
+<li><p><strong>同义词处理</strong>：将同义词或近义词映射到同一个标准化的词形，增强查询的召回率。</p>
+</li>
+</ul>
+<h3 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h3><p>假设我们有一个句子：“Running quickly in the park.”，处理流程可能如下：</p>
+<ol>
+<li><p><strong>分词</strong>：句子被分割成 <code>[&quot;running&quot;, &quot;quickly&quot;, &quot;in&quot;, &quot;the&quot;, &quot;park&quot;]</code>，同时转换为小写。</p>
+</li>
+<li><p><strong>标准化</strong>：</p>
+<ul>
+<li><strong>去除停用词</strong>：移除 “in” 和 “the”，剩下 <code>[&quot;running&quot;, &quot;quickly&quot;, &quot;park&quot;]</code>。</li>
+<li><strong>词干提取</strong>：如果启用了，可能会将 “running” 转换为 “run”，最终得到 <code>[&quot;run&quot;, &quot;quickly&quot;, &quot;park&quot;]</code>。</li>
+</ul>
+</li>
+</ol>
+<p>通过这样的分词和标准化流程，搜索引擎能够有效地索引和检索文档，提供准确的搜索结果。</p>
+<h2 id="ES分析器（Analyzer）"><a href="#ES分析器（Analyzer）" class="headerlink" title="ES分析器（Analyzer）"></a>ES分析器（Analyzer）</h2><p>Elasticsearch（ES）的分析器（Analyzer）正是基于上文的分词与标准化原理。分析器（Analyzer）是负责文本分析处理的关键组件，主要由以下三个部分组成：</p>
+<ol>
+<li><p><strong>字符过滤器（Character Filters）</strong>:<br>字符过滤器位于分析流程的起始端，它们在文本被分词之前对原始文本进行处理。字符过滤器可以用来删除或转换不需要的字符，比如HTML标签、XML实体、表情符号等，以便于后续的分词步骤更加准确。一个分析器可以有零个或多个字符过滤器。</p>
+</li>
+<li><p><strong>分词器（Tokenizer）</strong>:<br>分词器是分析器的核心，负责将经过字符过滤器处理的文本切分成一个个基本的文本单位，称为词元（tokens）。分词器根据预设的规则或算法来决定在哪里分割文本，不同的分词器适用于不同的语言特性和需求，如标准分词器（Standard Analyzer）、IK分词器（针对中文）等。一个分析器只能包含一个分词器。</p>
+</li>
+<li><p><strong>词元过滤器（Token Filters）</strong>:<br>词元过滤器在分词之后运行，对生成的词元序列进行进一步的加工。它们可以执行诸如转换词元大小写、去除停用词、词干提取（如将“running”变为“run”）、同义词替换等多种操作，以优化索引过程或提升搜索结果的相关性。</p>
+</li>
+</ol>
+<p>这三个组成部分共同作用，使Elasticsearch能够高效地处理和索引文本数据，同时也支持用户根据具体需求自定义分析器，以适应不同的搜索场景和语言特性。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
+<li>通义千问</li>
+</ul>
 
       
        <hr><span style="font-style: italic;color: gray;"> 转载请注明来源，欢迎对文章中的引用来源进行考证，欢迎指出任何有错误或不够清晰的表达。可以在下面评论区评论，也可以邮件至 duval1024@gmail.com </span>

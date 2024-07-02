@@ -4,6 +4,46 @@
   
     
     <entry>
+      <title>ES深入2-搜索原理</title>
+      <link href="/2024/07/02/ES%E6%B7%B1%E5%85%A52-%E6%90%9C%E7%B4%A2%E5%8E%9F%E7%90%86/"/>
+      <url>/2024/07/02/ES%E6%B7%B1%E5%85%A52-%E6%90%9C%E7%B4%A2%E5%8E%9F%E7%90%86/</url>
+      
+        <content type="html"><![CDATA[<h2 id="倒排索引"><a href="#倒排索引" class="headerlink" title="倒排索引"></a>倒排索引</h2><p>ES底层基于lucene实现，而lucene全文索引使用到的核心技术就是倒排索引。倒排索引（Inverted Index）是一种广泛应用于全文检索系统中的数据结构，如搜索引擎、数据库等。它的主要目的是为了高效地支持关键词搜索，即通过一个关键词快速找到包含该关键词的所有文档。倒排索引的基本原理是将文档中出现的关键词作为索引项，每个索引项记录了该关键词在哪些文档中出现过，以及在这些文档中的具体位置。</p><h3 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h3><ol><li><p><strong>分词处理</strong>：在构建倒排索引前，首先需要对文档进行分词处理，即将文档拆分为单个词汇或短语。这个过程称为分词（Tokenization）。</p></li><li><p><strong>创建索引项</strong>：对于每个词汇，创建一个索引项，该索引项记录了该词汇所出现的所有文档的标识符（通常是文档ID）以及在文档中的位置信息。</p></li><li><p><strong>数据结构</strong>：倒排索引通常使用哈希表、字典树、B树等高效数据结构来存储索引项，以便快速查询。每个关键词对应一个列表或集合，其中包含该词出现的所有文档ID。</p></li></ol><h3 id="样例"><a href="#样例" class="headerlink" title="样例"></a>样例</h3><p>假设我们有两个文档：</p><ul><li>文档1（ID&#x3D;1）：“The quick brown fox jumps over the lazy dog.”</li><li>文档2（ID&#x3D;2）：“A quick brown dog jumps over the fence.”</li></ul><p>经过分词处理，我们得到以下词汇集合：</p><ul><li>“the”, “quick”, “brown”, “fox”, “jumps”, “over”, “lazy”, “dog”, “a”, “fence”</li></ul><p>接下来，构建倒排索引：</p><ul><li>“the”: [1, 2]</li><li>“quick”: [1, 2]</li><li>“brown”: [1, 2]</li><li>“fox”: [1]</li><li>“jumps”: [1, 2]</li><li>“over”: [1, 2]</li><li>“lazy”: [1]</li><li>“dog”: [1, 2]</li><li>“a”: [2]</li><li>“fence”: [2]</li></ul><p>在这个例子中，每个关键词都指向一个文档ID列表，表明了该词出现在哪些文档中。例如，关键词”quick”对应的列表是[1, 2]，意味着”quick”出现在文档1和文档2中。</p><h3 id="应用"><a href="#应用" class="headerlink" title="应用"></a>应用</h3><p>当用户输入查询关键词时，搜索引擎只需直接在倒排索引中查找该关键词，即可立即获取包含该关键词的所有文档ID，从而大大加快了搜索的速度。此外，通过进一步分析这些文档ID集合（如计算交集、并集），搜索引擎还能支持更复杂的查询需求，如布尔查询、短语查询等。</p><h2 id="分词与标准化"><a href="#分词与标准化" class="headerlink" title="分词与标准化"></a>分词与标准化</h2><h3 id="分词"><a href="#分词" class="headerlink" title="分词"></a>分词</h3><p>分词（Tokenization）是将文本数据切分成更小的有意义单位（称为tokens或词元）的过程，这对于全文搜索至关重要。标准化（Normalization）则是将这些词元转换为标准形式，以提高搜索的一致性和准确性。</p><ul><li>比如：可以按照空格分割，将 “the quick brown fox jumps” 切分为[“the”, “quick”, “brown”, “fox”, “jumps”]；</li><li>也可以按照语言的词汇语法分割，将 “一只白色的狐狸跳进草丛” 切分为[“一”, “只”, “白色”, “的”, “狐狸”, “跳进”, “草丛”]</li></ul><h3 id="标准化"><a href="#标准化" class="headerlink" title="标准化"></a>标准化</h3><p>标准化是将分词后的词元转换成统一的格式，以便于比较和匹配。常见的标准化操作包括：</p><ul><li><p><strong>小写转换</strong>：将所有词元转换为小写，确保搜索时大小写不敏感。比如：”Fox”转换为”fox”；</p></li><li><p><strong>词干提取</strong>：通过去除词缀（如复数形式、时态变化等），将词元还原为其词根形式，有助于匹配变体形式的词汇。比如：”foxes” 转换为 “fox”；</p></li><li><p><strong>去除停用词</strong>：从词元流中移除常见但无实际意义的词汇，如“is”、“the”等，以减少噪音并提高搜索效率；</p></li><li><p><strong>同义词处理</strong>：将同义词或近义词映射到同一个标准化的词形，增强查询的召回率。</p></li></ul><h3 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h3><p>假设我们有一个句子：“Running quickly in the park.”，处理流程可能如下：</p><ol><li><p><strong>分词</strong>：句子被分割成 <code>[&quot;running&quot;, &quot;quickly&quot;, &quot;in&quot;, &quot;the&quot;, &quot;park&quot;]</code>，同时转换为小写。</p></li><li><p><strong>标准化</strong>：</p><ul><li><strong>去除停用词</strong>：移除 “in” 和 “the”，剩下 <code>[&quot;running&quot;, &quot;quickly&quot;, &quot;park&quot;]</code>。</li><li><strong>词干提取</strong>：如果启用了，可能会将 “running” 转换为 “run”，最终得到 <code>[&quot;run&quot;, &quot;quickly&quot;, &quot;park&quot;]</code>。</li></ul></li></ol><p>通过这样的分词和标准化流程，搜索引擎能够有效地索引和检索文档，提供准确的搜索结果。</p><h2 id="ES分析器（Analyzer）"><a href="#ES分析器（Analyzer）" class="headerlink" title="ES分析器（Analyzer）"></a>ES分析器（Analyzer）</h2><p>Elasticsearch（ES）的分析器（Analyzer）正是基于上文的分词与标准化原理。分析器（Analyzer）是负责文本分析处理的关键组件，主要由以下三个部分组成：</p><ol><li><p><strong>字符过滤器（Character Filters）</strong>:<br>字符过滤器位于分析流程的起始端，它们在文本被分词之前对原始文本进行处理。字符过滤器可以用来删除或转换不需要的字符，比如HTML标签、XML实体、表情符号等，以便于后续的分词步骤更加准确。一个分析器可以有零个或多个字符过滤器。</p></li><li><p><strong>分词器（Tokenizer）</strong>:<br>分词器是分析器的核心，负责将经过字符过滤器处理的文本切分成一个个基本的文本单位，称为词元（tokens）。分词器根据预设的规则或算法来决定在哪里分割文本，不同的分词器适用于不同的语言特性和需求，如标准分词器（Standard Analyzer）、IK分词器（针对中文）等。一个分析器只能包含一个分词器。</p></li><li><p><strong>词元过滤器（Token Filters）</strong>:<br>词元过滤器在分词之后运行，对生成的词元序列进行进一步的加工。它们可以执行诸如转换词元大小写、去除停用词、词干提取（如将“running”变为“run”）、同义词替换等多种操作，以优化索引过程或提升搜索结果的相关性。</p></li></ol><p>这三个组成部分共同作用，使Elasticsearch能够高效地处理和索引文本数据，同时也支持用户根据具体需求自定义分析器，以适应不同的搜索场景和语言特性。</p><h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul><li>通义千问</li></ul>]]></content>
+      
+      
+      <categories>
+          
+          <category> ES </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> ES </tag>
+            
+            <tag> 搜索 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title></title>
+      <link href="/2024/07/02/ES%E5%AD%A6%E4%B9%A05-%E6%9F%A5%E8%AF%A2/"/>
+      <url>/2024/07/02/ES%E5%AD%A6%E4%B9%A05-%E6%9F%A5%E8%AF%A2/</url>
+      
+        <content type="html"><![CDATA[]]></content>
+      
+      
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>ES学习4-分页</title>
       <link href="/2024/06/18/ES%E5%AD%A6%E4%B9%A04-%E5%88%86%E9%A1%B5/"/>
       <url>/2024/06/18/ES%E5%AD%A6%E4%B9%A04-%E5%88%86%E9%A1%B5/</url>
@@ -20,9 +60,9 @@
       
         <tags>
             
-            <tag> 搜索 </tag>
-            
             <tag> ES </tag>
+            
+            <tag> 搜索 </tag>
             
         </tags>
       
@@ -32,10 +72,10 @@
     
     <entry>
       <title>ES深入1-整体结构</title>
-      <link href="/2024/06/18/ES%E6%B7%B1%E5%85%A51-%E6%95%B4%E4%BD%93%E7%BB%93%E6%9E%84/"/>
-      <url>/2024/06/18/ES%E6%B7%B1%E5%85%A51-%E6%95%B4%E4%BD%93%E7%BB%93%E6%9E%84/</url>
+      <link href="/2024/06/18/ES%E6%B7%B1%E5%85%A51-%E6%95%B4%E4%BD%93%E7%BB%93%E6%9E%84%20copy/"/>
+      <url>/2024/06/18/ES%E6%B7%B1%E5%85%A51-%E6%95%B4%E4%BD%93%E7%BB%93%E6%9E%84%20copy/</url>
       
-        <content type="html"><![CDATA[<h2 id="整体架构"><a href="#整体架构" class="headerlink" title="整体架构"></a>整体架构</h2><p>掌握了ES的基本用法后，我们来深入了解一下ES的整体架构。</p><p><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FES%2Fes%E6%9E%B6%E6%9E%84%E8%8D%89%E5%9B%BE.png" alt="es架构草图.png"></p><p><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FES%2Fes-th-2-3.png" alt="es-th-2-3.png"></p><ul><li><p>ES集群模式下，有多个节点（node）组成一个完整集群。每个节点可以承担不同的角色从而构成不同的节点，包括但不限于：</p><ul><li>主节点（Master Node）<ul><li>负责集群的管理和协调工作，比如创建或删除索引、跟踪集群中节点的状态、分配碎片（shards）等；</li><li>主节点并不直接参与文档的索引或搜索操作，以减轻其负担；</li><li>通常建议设置较少数量的专用主节点，以确保集群的稳定性；</li></ul></li><li>数据节点（Data Node）:<ul><li>存储数据片段（shards）并参与文档的索引和搜索操作。</li><li>数据节点是集群中最耗费资源的部分，因为它们需要处理数据的存储和检索。</li><li>根据集群规模和硬件配置，可以有多台数据节点。</li></ul></li><li>协调节点（Coordinating Node）<ul><li>虽然不是一个官方的节点角色，但在实践中，可以配置节点不承担数据存储或主节点职责，专门负责接收客户端请求、协调搜索和索引操作。</li><li>这有助于分散主节点和数据节点的压力，提高集群的整体响应速度。</li></ul></li><li>专用主节点（Dedicated Master-Eligible Node）:<ul><li>仅具有主节点资格，不承担数据存储任务，专注于集群管理。</li><li>用于避免主节点因其他任务过载。</li></ul></li><li>冻结节点（Frozen Node）:<ul><li>专门用于存储冻结索引，这些索引的数据访问频率较低，但需要长期保存。</li></ul></li></ul></li><li><p>数据节点（Data Node负责持有数据分片（包括主分片和副本分片），参与文档的索引、搜索、更新以及删除等数据处理操作。当索引数据时，Elasticsearch 会根据配置的分片策略将数据分布在网络中的各个数据节点上，实现数据的水平扩展和负载均衡。此外，数据节点还负责维护分片的状态，确保数据的完整性和高可用性；</p></li><li><p>每一个Index由多个分片构成，这些分片会分散在不同数据节点上；</p></li><li><p>每一个分片是一个最小级别的工作单元，本质上是一个功能完备且独立的Luncene 索引实例。每个ES索引可以被分成多个分片，每个分片都包含索引中部分数据的文档集合。分片有两种类型：主分片（Primary Shards） 和 副本分片（Replica Shards）。主分片是索引数据存储的基本单位，而副本分片则是主分片的拷贝，用于提高数据的可用性和读取性能；</p></li><li><p>段（Segments）在分片内部，数据被组织成多个段。每个段都是一个不可变的倒排索引结构，包含了文档的一部分。随着时间推移，新的文档被写入新的段中，旧的段可能被合并以优化查询性能和磁盘使用。</p></li></ul><h2 id="搜索流程"><a href="#搜索流程" class="headerlink" title="搜索流程"></a>搜索流程</h2><h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul><li><a href="https://pdai.tech/md/db/nosql-es/elasticsearch-y-th-2.html">https://pdai.tech/md/db/nosql-es/elasticsearch-y-th-2.html</a></li></ul>]]></content>
+        <content type="html"><![CDATA[<h2 id="整体架构"><a href="#整体架构" class="headerlink" title="整体架构"></a>整体架构</h2><p>掌握了ES的基本用法后，我们来深入了解一下ES的整体架构。</p><p><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FES%2Fes%E6%9E%B6%E6%9E%84%E8%8D%89%E5%9B%BE.png" alt="es架构草图.png"></p><p><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FES%2Fes-th-2-3.png" alt="es-th-2-3.png"></p><ul><li><p>ES集群模式下，有多个节点（node）组成一个完整集群。每个节点可以承担不同的角色从而构成不同的节点，包括但不限于：</p><ul><li>主节点（Master Node）<ul><li>负责集群的管理和协调工作，比如创建或删除索引、跟踪集群中节点的状态、分配碎片（shards）等；</li><li>主节点并不直接参与文档的索引或搜索操作，以减轻其负担；</li><li>通常建议设置较少数量的专用主节点，以确保集群的稳定性；</li></ul></li><li>数据节点（Data Node）:<ul><li>存储数据片段（shards）并参与文档的索引和搜索操作。</li><li>数据节点是集群中最耗费资源的部分，因为它们需要处理数据的存储和检索。</li><li>根据集群规模和硬件配置，可以有多台数据节点。</li></ul></li><li>协调节点（Coordinating Node）<ul><li>虽然不是一个官方的节点角色，但在实践中，可以配置节点不承担数据存储或主节点职责，专门负责接收客户端请求、协调搜索和索引操作。</li><li>这有助于分散主节点和数据节点的压力，提高集群的整体响应速度。</li></ul></li><li>专用主节点（Dedicated Master-Eligible Node）:<ul><li>仅具有主节点资格，不承担数据存储任务，专注于集群管理。</li><li>用于避免主节点因其他任务过载。</li></ul></li><li>冻结节点（Frozen Node）:<ul><li>专门用于存储冻结索引，这些索引的数据访问频率较低，但需要长期保存。</li></ul></li></ul></li><li><p>数据节点（Data Node负责持有数据分片（包括主分片和副本分片），参与文档的索引、搜索、更新以及删除等数据处理操作。当索引数据时，Elasticsearch 会根据配置的分片策略将数据分布在网络中的各个数据节点上，实现数据的水平扩展和负载均衡。此外，数据节点还负责维护分片的状态，确保数据的完整性和高可用性；</p></li><li><p>每一个Index由多个分片构成，这些分片会分散在不同数据节点上；</p></li><li><p>每一个分片是一个最小级别的工作单元，本质上是一个功能完备且独立的Luncene 索引实例。每个ES索引可以被分成多个分片，每个分片都包含索引中部分数据的文档集合。分片有两种类型：主分片（Primary Shards） 和 副本分片（Replica Shards）。主分片是索引数据存储的基本单位，而副本分片则是主分片的拷贝，用于提高数据的可用性和读取性能；</p></li><li><p>段（Segments）在分片内部，数据被组织成多个段。每个段都是一个不可变的倒排索引结构，包含了文档的一部分。随着时间推移，新的文档被写入新的段中，旧的段可能被合并以优化查询性能和磁盘使用。</p></li></ul><h2 id="索引流程"><a href="#索引流程" class="headerlink" title="索引流程"></a>索引流程</h2><p>Elasticsearch（ES）文档插入到索引的过程大致遵循以下步骤：</p><ul><li><strong>客户端请求</strong>：首先，客户端（比如一个应用程序或者API请求）向Elasticsearch集群发送一个HTTP PUT或POST请求，请求中包含要插入文档的具体信息，比如文档的JSON内容、目标索引名称以及可选的ID。</li><li><strong>节点接收</strong>：请求被发送到集群中的任何节点，这个节点被称为协调节点。协调节点负责接收请求并进行后续的路由操作，而不直接处理数据的存储或检索。</li><li>路由决策**：协调节点根据文档ID和索引的配置计算出该文档应存储在哪个主分片上。这个过程基于一种散列算法，确保相同ID的文档总是被路由到同一个分片上。<br>转发请求：协调节点将请求转发给存储目标主分片的数据节点。如果请求中包含写操作（如索引或更新），则直接转发到该主分片所在节点。</li><li><strong>文档处理</strong>：<ul><li><strong>分析</strong>：数据节点接收到请求后，首先对文档内容进行分析，这包括分词（tokenization）、去除停用词、转换为小写等，以便创建适合搜索的结构。</li><li><strong>索引文档</strong>：经过分析后，文档被序列化为Lucene的内部格式，并添加到相应的主分片中。这个过程涉及到倒排索引的构建或更新，确保文档可以被快速检索。</li></ul></li><li><strong>事务日志记录</strong>：在文档被实际写入到内存或磁盘之前，Elasticsearch会先将其操作记录在事务日志（Translog）中，这是为了确保数据的持久性。</li><li><strong>刷新（Refresh）</strong>：Elasticsearch有一个可配置的刷新周期（默认为1秒），在这个周期内，内存中的文档会被刷新到一个新的Lucene段中，并打开供搜索。这意味着文档在被索引后很快（几乎是实时的）就能被搜索到，但这个过程比直接写入硬盘更快，因为段还在内存中。</li><li><strong>副本同步</strong>：一旦文档被成功写入主分片，协调节点还会确保副本分片也得到更新，以维持索引的高可用性。这个过程是异步的，可以配置副本数量来增强数据冗余。</li><li><strong>确认响应</strong>：一旦主分片和所有副本分片（根据配置的副本确认级别）都确认了写入操作，协调节点会向客户端发送一个成功的响应，表明文档已被成功索引。</li><li><strong>段合并</strong>：在后台，Elasticsearch会定期进行段合并，将小的段合并成更大的段，以优化存储和查询性能。这个过程发生在索引和搜索操作之外，不会影响正常的读写操作。</li></ul><h2 id="搜索流程"><a href="#搜索流程" class="headerlink" title="搜索流程"></a>搜索流程</h2><p>在Elasticsearch (ES) 集群中执行一次搜索请求的大致过程如下：</p><ol><li><p><strong>请求接收</strong>：</p><ul><li>客户端发送搜索请求到Elasticsearch集群中的任意一个节点，这个节点称为**协调节点(coordinating node)**。</li></ul></li><li><p><strong>解析与路由</strong>：</p><ul><li>协调节点解析搜索请求，包括查询条件、过滤器、排序方式等，并根据索引信息确定哪些分片可能包含相关数据。在ES中，数据被分割成多个分片(shards)，每个分片可以有零个或多个副本(replicas)。协调节点会根据分片信息决定需要向哪些分片发起搜索请求。</li></ul></li><li><p><strong>查询转发</strong>：</p><ul><li>协调节点将搜索请求转发给持有相关数据分片的节点。这一步骤会根据网络往返次数最小化或非最小化策略进行。如果是最小化策略，协调节点尝试减少与各个分片的交互次数，可能一次性向多个节点发送请求；非最小化策略则可能涉及更多次的交互。</li></ul></li><li><p><strong>分片级别搜索</strong>：</p><ul><li>每个持有相关分片的节点在其本地分片上执行搜索操作，生成该分片上的匹配结果集。这一步可能包括倒排索引的查询、文档评分、排序等操作。</li></ul></li><li><p><strong>结果汇总</strong>：</p><ul><li>各个分片节点将搜索结果返回给协调节点。协调节点对这些结果进行汇总处理，可能包括去重、合并、排序以及根据请求参数执行后续的聚合操作。</li></ul></li><li><p><strong>结果剪裁与排序</strong>：</p><ul><li>协调节点根据请求中的分页参数、排序规则等对汇总的结果进行剪裁和排序，以准备最终返回给客户端的数据集。</li></ul></li><li><p><strong>响应构建与返回</strong>：</p><ul><li>协调节点将最终的搜索结果封装成响应体，并通过HTTP响应的形式返回给客户端。</li></ul></li></ol><p>整个过程中，Elasticsearch利用其分布式特性并行处理请求，提高了搜索效率。此外，Elasticsearch还提供了丰富的API和机制来优化搜索性能，如预处理节点(ingest node)可以对数据进行预处理，而复制机制确保了数据的高可用性。</p><h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul><li><a href="https://pdai.tech/md/db/nosql-es/elasticsearch-y-th-2.html">https://pdai.tech/md/db/nosql-es/elasticsearch-y-th-2.html</a></li></ul>]]></content>
       
       
       <categories>
@@ -47,9 +87,9 @@
       
         <tags>
             
-            <tag> 搜索 </tag>
-            
             <tag> ES </tag>
+            
+            <tag> 搜索 </tag>
             
         </tags>
       
@@ -124,9 +164,9 @@
       
         <tags>
             
-            <tag> 搜索 </tag>
-            
             <tag> ES </tag>
+            
+            <tag> 搜索 </tag>
             
         </tags>
       

@@ -2,9 +2,9 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Java 线程池详解 | 湾区极客</title>
-  <meta name="keywords" content=" 线程池 ">
-  <meta name="description" content="Java 线程池详解 | 湾区极客">
+  <title>ES深入1-整体结构 | 湾区极客</title>
+  <meta name="keywords" content=" ES , 搜索 ">
+  <meta name="description" content="ES深入1-整体结构 | 湾区极客">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <meta name="description" content="湾区极客——大湾区技术极客聚集地">
 <meta property="og:type" content="website">
@@ -803,9 +803,9 @@
 </aside>
 <div id="post">
     <div class="pjax">
-        <article id="post-Java-线程池详解" class="article article-type-post" itemscope itemprop="blogPost">
+        <article id="post-ES深入1-整体结构 copy" class="article article-type-post" itemscope itemprop="blogPost">
     
-        <h1 class="article-title">Java 线程池详解</h1>
+        <h1 class="article-title">ES深入1-整体结构</h1>
     
     <div class="article-meta">
         
@@ -815,7 +815,7 @@
             <i class="iconfont icon-category"></i>
             
             
-            <a  data-rel="Java">Java</a>
+            <a  data-rel="ES">ES</a>
             
         </span>
         
@@ -823,19 +823,21 @@
         <span class="tag">
             <i class="iconfont icon-tag"></i>
             
-            <a class="color4">线程池</a>
+            <a class="color3">ES</a>
+            
+            <a class="color3">搜索</a>
             
         </span>
         
     </div>
     <div class="article-meta">
         
-            发布时间 : <time class="date" title='最后更新: 2024-02-18 21:17:51'>2017-08-10 16:47</time>
+            发布时间 : <time class="date" title='最后更新: 2024-07-02 08:23:42'>2024-06-18 08:54</time>
         
     </div>
     <div class="article-meta">
         
-        <span>字数:2k</span>
+        <span>字数:2.1k</span>
         
         
         <span id="busuanzi_container_page_pv">
@@ -865,7 +867,7 @@
     
     <div class="toc-ref">
     
-        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Java-%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="toc-text">Java 线程池</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ExecutorService-%E6%8E%A5%E5%8F%A3"><span class="toc-text">ExecutorService 接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ThreadPoolExecutor"><span class="toc-text">ThreadPoolExecutor</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Executors"><span class="toc-text">Executors</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Executors-newCachedThreadPool"><span class="toc-text">Executors.newCachedThreadPool</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Executors-newFixedThreadPool"><span class="toc-text">Executors.newFixedThreadPool</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Executors-newSingleThreadExecutor"><span class="toc-text">Executors.newSingleThreadExecutor</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Executors-newScheduledThreadPool"><span class="toc-text">Executors.newScheduledThreadPool</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Callable-Future"><span class="toc-text">Callable  &amp;&amp; Future</span></a></li></ol></li></ol>
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84"><span class="toc-text">整体架构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B4%A2%E5%BC%95%E6%B5%81%E7%A8%8B"><span class="toc-text">索引流程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%90%9C%E7%B4%A2%E6%B5%81%E7%A8%8B"><span class="toc-text">搜索流程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-text">参考资料</span></a></li></ol>
     
 <style>
     .left-col .switch-btn,
@@ -881,181 +883,107 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <h2 id="Java-线程池"><a href="#Java-线程池" class="headerlink" title="Java 线程池"></a>Java 线程池</h2><p>Java 线程池模型的关键几个类和接口包括：Executor，Executors，ExecutorService，ThreadPoolExecutor，Future，Callable </p>
-<span id="more"></span>
-
-<h3 id="ExecutorService-接口"><a href="#ExecutorService-接口" class="headerlink" title="ExecutorService 接口"></a>ExecutorService 接口</h3><p>&emsp;&emsp; 所有的线程池实现类都继承于ExecutorService  接口，包括ThreadPoolExecutor。在使用线程池的时候，其实也是通过这个接口动态绑定各个线程池实例进行调用，常用的接口方法包括：</p>
-<pre><code>void execute(Runnable command);
-&lt;T&gt; Future&lt;T&gt; submit(Callable&lt;T&gt; task);
-void shutdown();
-boolean awaitTermination(long timeout, TimeUnit unit)
-</code></pre>
-<h3 id="ThreadPoolExecutor"><a href="#ThreadPoolExecutor" class="headerlink" title="ThreadPoolExecutor"></a>ThreadPoolExecutor</h3><p>这个类是各种线程池类的<em>爸爸</em>或<em>干爹</em>,所有的常见的线程池类都是从他派生出来。怎么派生的呢？我们来看下他的构造方法：</p>
-<pre><code class="java">public ThreadPoolExecutor(int corePoolSize,
-                              int maximumPoolSize,
-                              long keepAliveTime,
-                              TimeUnit unit,
-                              BlockingQueue&lt;Runnable&gt; workQueue)
-</code></pre>
-<p>这里我们只看这个五个参数的构造方法（还有个6参数方法）：</p>
-<p><strong>corePoolSize</strong> 核心线程数量，包含空闲线程<br><strong>maximumPoolSize</strong> 最大线程数量<br><strong>keepAliveTime</strong> 空闲的线程存活时间<br><strong>unit</strong>  时间单位<br><strong>workQueue</strong> 线程缓存队列，仅保存 execute方法提交的线程</p>
-<p>详细的含义直接摘抄别人的总结：根据 ThreadPoolExecutor 源码前面大段的注释，我们可以看出，当试图通过 excute 方法讲一个 Runnable 任务添加到线程池中时，按照如下顺序来处理：</p>
-<p>如果线程池中的线程数量少于 corePoolSize，即使线程池中有空闲线程，也会创建一个新的线程来执行新添加的任务；</p>
-<p>如果线程池中的线程数量大于等于 corePoolSize，但缓冲队列 workQueue 未满，则将新添加的任务放到 workQueue 中，按照 FIFO 的原则依次等待执行（线程池中有线程空闲出来后依次将缓冲队列中的任务交付给空闲的线程执行）；</p>
-<p>如果线程池中的线程数量大于等于 corePoolSize，且缓冲队列 workQueue 已满，但线程池中的线程数量小于 maximumPoolSize，则会创建新的线程来处理被添加的任务；</p>
-<p>如果线程池中的线程数量等于了 maximumPoolSize，有 4 种才处理方式（该构造方法调用了含有 6 个参数的构造方法，并将最后一个构造方法为 RejectedExecutionHandler 类型，它在处理线程溢出时有 4 种方式，这里不再细说，要了解的，自己可以阅读下源码）。</p>
-<p><strong>总结起来，也即是说，当有新的任务要处理时，先看线程池中的线程数量是否大于 corePoolSize，再看缓冲队列 workQueue 是否满，最后看线程池中的线程数量是否大于 maximumPoolSize。</strong></p>
-<h3 id="Executors"><a href="#Executors" class="headerlink" title="Executors"></a>Executors</h3><p>Executors是一个工厂类，里边给我们提供了几个线程池的工厂方法，例如：</p>
-<pre><code class="java">public static ExecutorService newCachedThreadPool() &#123;
-        return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
-                                      60L, TimeUnit.SECONDS,
-                                      new SynchronousQueue&lt;Runnable&gt;());
-&#125;
-
-public static ExecutorService newFixedThreadPool(int nThreads) &#123;
-        return new ThreadPoolExecutor(nThreads, nThreads,
-                                      0L, TimeUnit.MILLISECONDS,
-                                      new LinkedBlockingQueue&lt;Runnable&gt;());
-&#125;
-    
-public static ExecutorService newSingleThreadExecutor() &#123;
-        return new FinalizableDelegatedExecutorService
-            (new ThreadPoolExecutor(1, 1,
-                                    0L, TimeUnit.MILLISECONDS,
-                                    new LinkedBlockingQueue&lt;Runnable&gt;()));
-&#125;
-
-public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize) &#123;
-        return new ScheduledThreadPoolExecutor(corePoolSize);
-&#125;
-
-.........以下略掉N个方法.........
-</code></pre>
-<h4 id="Executors-newCachedThreadPool"><a href="#Executors-newCachedThreadPool" class="headerlink" title="Executors.newCachedThreadPool"></a>Executors.newCachedThreadPool</h4><p>立马看下这个方法的调用的是哪个构造函数：</p>
-<pre><code class="java">new ThreadPoolExecutor(0, Integer.MAX_VALUE,
-                                      60L, TimeUnit.SECONDS,
-                                      new SynchronousQueue&lt;Runnable&gt;());
-</code></pre>
-<p>可以看到，核心线程数为0，空闲线程存活时长是60s，就是说一旦某个线程空闲下来超过60秒，他就会从池中拿掉。另外SynchronousQueue 是一个不缓存元素的队列，一旦有Runnable 通过execute提交进来，他立即传递给线程池去寻找空闲线程去执行，如果没有空闲线程，则新建一个。</p>
-<p>像下边这段测试代码，因为每隔21秒才提交一个sleep20 秒的runnable，所以，线程池中的唯一个线程不断地被得到复用。</p>
-<pre><code class="java">public class ExecutorTest &#123;
-
-    private static ExecutorService service;
-
-    static class SleepTask extends Thread &#123;
-        @Override
-        public void run() &#123;
-            try &#123;
-                Thread.sleep(20000);
-            &#125; catch (InterruptedException e) &#123;                
-            &#125;
-            System.out.println(Thread.currentThread().getName() + &quot; sleep 20 s &quot;);
-        &#125;
-    &#125;
-
-
-    public static void main(String[] args) throws InterruptedException &#123;
-        service = Executors.newCachedThreadPool();
-        for (int i = 0; i &lt; 10; i++) &#123;
-            service.execute(new SleepTask());
-            Thread.sleep(21000);
-        &#125;
-         // 这里要使得主线程等待线程池结束
-        service.shutdown();
-        while (!service.awaitTermination(10, TimeUnit.SECONDS)) ;
-    &#125;
-&#125;
-
-输出：
-pool-1-thread-1 sleep 20 s 
-pool-1-thread-1 sleep 20 s 
-pool-1-thread-1 sleep 20 s 
-pool-1-thread-1 sleep 20 s 
-pool-1-thread-1 sleep 20 s 
-pool-1-thread-1 sleep 20 s 
-(以下略)
-</code></pre>
-<h4 id="Executors-newFixedThreadPool"><a href="#Executors-newFixedThreadPool" class="headerlink" title="Executors.newFixedThreadPool"></a>Executors.newFixedThreadPool</h4><p>先看调用的构造方法：</p>
-<pre><code class="java">public static ExecutorService newFixedThreadPool(int nThreads) &#123;
-        return new ThreadPoolExecutor(nThreads, nThreads,
-                                      0L, TimeUnit.MILLISECONDS,
-                                      new LinkedBlockingQueue&lt;Runnable&gt;());
-&#125;
-</code></pre>
-<p>构造方法参数是，corePoolSize &#x3D;&#x3D; maximumPoolSize &#x3D;&#x3D; nThreads，线程空闲时长为0s，队列为无界(Integer.MAX)的先进先出阻塞队列。</p>
-<p>这个意思就是，线程不会被复用，execute提交一个runnable，就新建一个线程去执行他，线程用完就销毁。当线程数量大于 corePoolSize ，就放到队列里缓存起来，知道有空闲的位置让出来。</p>
-<h4 id="Executors-newSingleThreadExecutor"><a href="#Executors-newSingleThreadExecutor" class="headerlink" title="Executors.newSingleThreadExecutor"></a>Executors.newSingleThreadExecutor</h4><p>线程池空间为1，没有空闲时间。这个很简单，略过。跟newFixedThreadPool(1)类似。</p>
-<pre><code class="java">  public static ExecutorService newSingleThreadExecutor() &#123;
-        return new FinalizableDelegatedExecutorService
-            (new ThreadPoolExecutor(1, 1,
-                                    0L, TimeUnit.MILLISECONDS,
-                                    new LinkedBlockingQueue&lt;Runnable&gt;()));
-    &#125;
- 
-</code></pre>
-<h4 id="Executors-newScheduledThreadPool"><a href="#Executors-newScheduledThreadPool" class="headerlink" title="Executors.newScheduledThreadPool"></a>Executors.newScheduledThreadPool</h4><p>这个线程池的使用姿势跟上边略有不同，先看构造方法调用：</p>
-<pre><code class="java">public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize) &#123;
-        return new ScheduledThreadPoolExecutor(corePoolSize);
-&#125;
- //最终调用了这个方法：
-public ScheduledThreadPoolExecutor(int corePoolSize) &#123;
-        super(corePoolSize, Integer.MAX_VALUE, 0, NANOSECONDS,
-              new DelayedWorkQueue());
-&#125;
-</code></pre>
-<p>可以看到，corePoolSize可以指定，maximumPoolSize 无穷大，空闲时间为0，队列使用的支持延时获取元素的无界阻塞队列。在调用的时候，需要使用ScheduledExecutorService 这个接口来动态绑定，才能发挥真正的作用。<br>比如 :<br><strong>scheduleAtFixedRate</strong> 这个方法，允许command 第一次延迟 initialDelay个时间单位才开始执行，第二次延迟initialDelay+period 个时间单位才开始，第三次延迟到initialDelay+period*2 个时间单位才开始。每次增加period 个时间单位。但不允许并发，前一个执行没结束，后继的执行会被推迟。见范例。测试结果表明，每隔5s 左右才会执行一次。</p>
-<pre><code class="java">public ScheduledFuture&lt;?&gt; scheduleAtFixedRate(Runnable command,
-                                                  long initialDelay,
-                                                  long period,
-                                                  TimeUnit unit);
-</code></pre>
-<p><strong>scheduleWithFixedDelay</strong> 这个方法，允许command第一次延迟 initialDelay个时间单位才开始执行，后继的每一次都要在前一次结束后，延迟period个时间单位才开始执行。将范例里的注释行去掉，测试结果符合该描述。</p>
-<p>范例：</p>
-<pre><code class="java">public class ExecutorTest &#123;
-
-    private static ScheduledExecutorService service;
-
-    static class SleepTask extends Thread &#123;
-        @Override
-        public void run() &#123;
-            System.out.println(Thread.currentThread().getName() + &quot; start &quot;);
-            try &#123;
-                Thread.sleep(5000);
-            &#125; catch (InterruptedException e) &#123;
-            &#125;
-            System.out.println(Thread.currentThread().getName() + &quot; finished &quot;);
-        &#125;
-    &#125;
-
-
-    public static void main(String[] args) throws InterruptedException &#123;
-        service = Executors.newScheduledThreadPool(5);
-        service.scheduleAtFixedRate(new SleepTask(), 1, 1, TimeUnit.SECONDS);
-       // service.scheduleWithFixedDelay(new SleepTask(),1,1,TimeUnit.SECONDS);
-    &#125;
-&#125;
-&#125;
-</code></pre>
-<h3 id="Callable-Future"><a href="#Callable-Future" class="headerlink" title="Callable  &amp;&amp; Future"></a>Callable  &amp;&amp; Future</h3><p>&emsp;&emsp;上面都是在讨论用线程池执行Runnable对象，还有另外一个实现了 Callable 接口的对象。实现了 Callable 接口的对象会有返回值，但是Runnable对象返回值为null。并且 Callable 的 call()方法只能通过 ExecutorService 的 submit(Callable task) 方法来执行，并且返回一个 Future，是表示任务等待完成的 Future。<br>&emsp;&emsp;当将一个 Callable 的对象传递给 ExecutorService 的 submit 方法，则该 call 方法自动在一个线程上执行，并且会返回执行结果 Future 对象。同样，将 Runnable 的对象传递给 ExecutorService 的 submit 方法，则该 run 方法自动在一个线程上执行，并且会返回执行结果 Future 对象，但是在该 Future 对象上调用 get 方法，将返回 null。<br>&emsp;&emsp;上范例：</p>
-<pre><code class="java">public class ExecutorTest &#123;
-
-    private static ExecutorService service;
-
-    static class SleepTask implements Callable&lt;String&gt; &#123;
-        @Override
-        public String call() throws Exception &#123;
-            return Thread.currentThread().getName()+&quot; is finished.&quot;;
-        &#125;
-    &#125;
-
-
-    public static void main(String[] args) throws InterruptedException, ExecutionException &#123;
-        service = Executors.newCachedThreadPool();
-        Future&lt;String&gt; future = service.submit(new SleepTask());
-        System.out.println(future.get());
-    &#125;
-&#125;
-</code></pre>
+        <h2 id="整体架构"><a href="#整体架构" class="headerlink" title="整体架构"></a>整体架构</h2><p>掌握了ES的基本用法后，我们来深入了解一下ES的整体架构。</p>
+<p><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FES%2Fes%E6%9E%B6%E6%9E%84%E8%8D%89%E5%9B%BE.png" alt="es架构草图.png"></p>
+<p><img src="https://pic-bed-sz.oss-cn-shenzhen.aliyuncs.com/blog%2FES%2Fes-th-2-3.png" alt="es-th-2-3.png"></p>
+<ul>
+<li><p>ES集群模式下，有多个节点（node）组成一个完整集群。每个节点可以承担不同的角色从而构成不同的节点，包括但不限于：</p>
+<ul>
+<li>主节点（Master Node）<ul>
+<li>负责集群的管理和协调工作，比如创建或删除索引、跟踪集群中节点的状态、分配碎片（shards）等；</li>
+<li>主节点并不直接参与文档的索引或搜索操作，以减轻其负担；</li>
+<li>通常建议设置较少数量的专用主节点，以确保集群的稳定性；</li>
+</ul>
+</li>
+<li>数据节点（Data Node）:<ul>
+<li>存储数据片段（shards）并参与文档的索引和搜索操作。</li>
+<li>数据节点是集群中最耗费资源的部分，因为它们需要处理数据的存储和检索。</li>
+<li>根据集群规模和硬件配置，可以有多台数据节点。</li>
+</ul>
+</li>
+<li>协调节点（Coordinating Node）<ul>
+<li>虽然不是一个官方的节点角色，但在实践中，可以配置节点不承担数据存储或主节点职责，专门负责接收客户端请求、协调搜索和索引操作。</li>
+<li>这有助于分散主节点和数据节点的压力，提高集群的整体响应速度。</li>
+</ul>
+</li>
+<li>专用主节点（Dedicated Master-Eligible Node）:<ul>
+<li>仅具有主节点资格，不承担数据存储任务，专注于集群管理。</li>
+<li>用于避免主节点因其他任务过载。</li>
+</ul>
+</li>
+<li>冻结节点（Frozen Node）:<ul>
+<li>专门用于存储冻结索引，这些索引的数据访问频率较低，但需要长期保存。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>数据节点（Data Node负责持有数据分片（包括主分片和副本分片），参与文档的索引、搜索、更新以及删除等数据处理操作。当索引数据时，Elasticsearch 会根据配置的分片策略将数据分布在网络中的各个数据节点上，实现数据的水平扩展和负载均衡。此外，数据节点还负责维护分片的状态，确保数据的完整性和高可用性；</p>
+</li>
+<li><p>每一个Index由多个分片构成，这些分片会分散在不同数据节点上；</p>
+</li>
+<li><p>每一个分片是一个最小级别的工作单元，本质上是一个功能完备且独立的Luncene 索引实例。每个ES索引可以被分成多个分片，每个分片都包含索引中部分数据的文档集合。分片有两种类型：主分片（Primary Shards） 和 副本分片（Replica Shards）。主分片是索引数据存储的基本单位，而副本分片则是主分片的拷贝，用于提高数据的可用性和读取性能；</p>
+</li>
+<li><p>段（Segments）在分片内部，数据被组织成多个段。每个段都是一个不可变的倒排索引结构，包含了文档的一部分。随着时间推移，新的文档被写入新的段中，旧的段可能被合并以优化查询性能和磁盘使用。</p>
+</li>
+</ul>
+<h2 id="索引流程"><a href="#索引流程" class="headerlink" title="索引流程"></a>索引流程</h2><p>Elasticsearch（ES）文档插入到索引的过程大致遵循以下步骤：</p>
+<ul>
+<li><strong>客户端请求</strong>：首先，客户端（比如一个应用程序或者API请求）向Elasticsearch集群发送一个HTTP PUT或POST请求，请求中包含要插入文档的具体信息，比如文档的JSON内容、目标索引名称以及可选的ID。</li>
+<li><strong>节点接收</strong>：请求被发送到集群中的任何节点，这个节点被称为协调节点。协调节点负责接收请求并进行后续的路由操作，而不直接处理数据的存储或检索。</li>
+<li>路由决策**：协调节点根据文档ID和索引的配置计算出该文档应存储在哪个主分片上。这个过程基于一种散列算法，确保相同ID的文档总是被路由到同一个分片上。<br>转发请求：协调节点将请求转发给存储目标主分片的数据节点。如果请求中包含写操作（如索引或更新），则直接转发到该主分片所在节点。</li>
+<li><strong>文档处理</strong>：<ul>
+<li><strong>分析</strong>：数据节点接收到请求后，首先对文档内容进行分析，这包括分词（tokenization）、去除停用词、转换为小写等，以便创建适合搜索的结构。</li>
+<li><strong>索引文档</strong>：经过分析后，文档被序列化为Lucene的内部格式，并添加到相应的主分片中。这个过程涉及到倒排索引的构建或更新，确保文档可以被快速检索。</li>
+</ul>
+</li>
+<li><strong>事务日志记录</strong>：在文档被实际写入到内存或磁盘之前，Elasticsearch会先将其操作记录在事务日志（Translog）中，这是为了确保数据的持久性。</li>
+<li><strong>刷新（Refresh）</strong>：Elasticsearch有一个可配置的刷新周期（默认为1秒），在这个周期内，内存中的文档会被刷新到一个新的Lucene段中，并打开供搜索。这意味着文档在被索引后很快（几乎是实时的）就能被搜索到，但这个过程比直接写入硬盘更快，因为段还在内存中。</li>
+<li><strong>副本同步</strong>：一旦文档被成功写入主分片，协调节点还会确保副本分片也得到更新，以维持索引的高可用性。这个过程是异步的，可以配置副本数量来增强数据冗余。</li>
+<li><strong>确认响应</strong>：一旦主分片和所有副本分片（根据配置的副本确认级别）都确认了写入操作，协调节点会向客户端发送一个成功的响应，表明文档已被成功索引。</li>
+<li><strong>段合并</strong>：在后台，Elasticsearch会定期进行段合并，将小的段合并成更大的段，以优化存储和查询性能。这个过程发生在索引和搜索操作之外，不会影响正常的读写操作。</li>
+</ul>
+<h2 id="搜索流程"><a href="#搜索流程" class="headerlink" title="搜索流程"></a>搜索流程</h2><p>在Elasticsearch (ES) 集群中执行一次搜索请求的大致过程如下：</p>
+<ol>
+<li><p><strong>请求接收</strong>：</p>
+<ul>
+<li>客户端发送搜索请求到Elasticsearch集群中的任意一个节点，这个节点称为**协调节点(coordinating node)**。</li>
+</ul>
+</li>
+<li><p><strong>解析与路由</strong>：</p>
+<ul>
+<li>协调节点解析搜索请求，包括查询条件、过滤器、排序方式等，并根据索引信息确定哪些分片可能包含相关数据。在ES中，数据被分割成多个分片(shards)，每个分片可以有零个或多个副本(replicas)。协调节点会根据分片信息决定需要向哪些分片发起搜索请求。</li>
+</ul>
+</li>
+<li><p><strong>查询转发</strong>：</p>
+<ul>
+<li>协调节点将搜索请求转发给持有相关数据分片的节点。这一步骤会根据网络往返次数最小化或非最小化策略进行。如果是最小化策略，协调节点尝试减少与各个分片的交互次数，可能一次性向多个节点发送请求；非最小化策略则可能涉及更多次的交互。</li>
+</ul>
+</li>
+<li><p><strong>分片级别搜索</strong>：</p>
+<ul>
+<li>每个持有相关分片的节点在其本地分片上执行搜索操作，生成该分片上的匹配结果集。这一步可能包括倒排索引的查询、文档评分、排序等操作。</li>
+</ul>
+</li>
+<li><p><strong>结果汇总</strong>：</p>
+<ul>
+<li>各个分片节点将搜索结果返回给协调节点。协调节点对这些结果进行汇总处理，可能包括去重、合并、排序以及根据请求参数执行后续的聚合操作。</li>
+</ul>
+</li>
+<li><p><strong>结果剪裁与排序</strong>：</p>
+<ul>
+<li>协调节点根据请求中的分页参数、排序规则等对汇总的结果进行剪裁和排序，以准备最终返回给客户端的数据集。</li>
+</ul>
+</li>
+<li><p><strong>响应构建与返回</strong>：</p>
+<ul>
+<li>协调节点将最终的搜索结果封装成响应体，并通过HTTP响应的形式返回给客户端。</li>
+</ul>
+</li>
+</ol>
+<p>整个过程中，Elasticsearch利用其分布式特性并行处理请求，提高了搜索效率。此外，Elasticsearch还提供了丰富的API和机制来优化搜索性能，如预处理节点(ingest node)可以对数据进行预处理，而复制机制确保了数据的高可用性。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
+<li><a target="_blank" rel="noopener" href="https://pdai.tech/md/db/nosql-es/elasticsearch-y-th-2.html">https://pdai.tech/md/db/nosql-es/elasticsearch-y-th-2.html</a></li>
+</ul>
 
       
        <hr><span style="font-style: italic;color: gray;"> 转载请注明来源，欢迎对文章中的引用来源进行考证，欢迎指出任何有错误或不够清晰的表达。可以在下面评论区评论，也可以邮件至 duval1024@gmail.com </span>
